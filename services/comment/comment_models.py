@@ -12,7 +12,7 @@ class Owner(BaseModel):
 
 
 # для create
-class CommentResponse(BaseModel):
+class CommentResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
@@ -26,7 +26,7 @@ class CommentResponse(BaseModel):
 class CommentList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    data: List[CommentResponse]
+    data: List[CommentResponseModel]
     total: int
     page: int
     limit: int
