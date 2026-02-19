@@ -21,3 +21,6 @@ class ApiComment(Helper):
         body = self._json(response)
         assert response.status_code in ok_statuses, body
         return body
+
+    # ----------------------------------------------------- CRUD -------------------------------------------------------
+    # CRUD = Create, Read, Update, Delete (создать, прочитать, обновить, удалить), включая вызовы списков.
