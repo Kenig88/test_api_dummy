@@ -19,7 +19,7 @@ class ApiPost(Helper):
     # CRUD = Create, Read, Update, Delete (создать, прочитать, обновить, удалить), включая вызовы списков.
 
     @allure.step("POST == /post/create")
-    def create_post(self, payload: dict | None = None) -> PostResponseModel:
+    def create_post(self, user_id: str, payload: dict | None = None) -> PostResponseModel:
         pass
 
     @allure.step("GET == /user/{user_id}/post")
