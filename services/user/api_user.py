@@ -1,5 +1,4 @@
 from typing import Optional
-
 from services.user.user_models import UserResponseModel, UserListResponseModel, UserDeleteResponseModel
 from utils.helper import Helper
 import allure
@@ -52,7 +51,7 @@ class ApiUser(Helper):
         # 5) Валидируем и превращаем dict в UserCreateModel (Pydantic v2)
         return UserResponseModel.model_validate(body)
 
-    @allure.step("GET == /user")
+    @allure.step("GET == /user?page=*&limit=*")
     def get_list_users(self, page: int, limit: int) -> list[UserListResponseModel]:
 
         # 1) Отправляем GET запрос на /user с query-параметрами limit/page
@@ -74,7 +73,7 @@ class ApiUser(Helper):
         # 5) Каждый элемент списка превращаем в UserResponseModel
         return [UserListResponseModel.model_validate(users) for users in users_data]
 
-    @allure.step("GET == /user/:id")
+    @allure.step("GET == /user/{user_id}")
     def get_user_by_id(self, user_id: str) -> UserResponseModel:
 
         # 1) Отправляем GET запрос на /user/{user_id}
@@ -92,7 +91,7 @@ class ApiUser(Helper):
         # 4) Превращаем JSON в модель
         return UserResponseModel.model_validate(body)
 
-    @allure.step("PUT == /user/:id")
+    @allure.step("PUT == /user/{user_id}")
     def update_user(self, user_id: str, payload: dict | None = None) -> UserResponseModel:
 
         # 1) Если тест не передал payload, берём "шаблонный" payload
@@ -115,7 +114,7 @@ class ApiUser(Helper):
         # 5) Возвращаем обновлённую модель
         return UserResponseModel.model_validate(body)
 
-    @allure.step("DELETE == /user/:id")
+    @allure.step("DELETE == /user/{user_id}")
     def delete_user(self, user_id: str, allow_not_found: bool = False) -> Optional[UserDeleteResponseModel]:
 
         # 1) Отправляем DELETE запрос на /user/{user_id}
