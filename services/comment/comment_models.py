@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 
 
@@ -11,32 +11,29 @@ class Owner(BaseModel):
     lastName: str
 
 
-# для create, get, update
-class PostResponseModel(BaseModel):
+# для create
+class CommentResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
-    image: str
-    likes: int
-    link: Optional[str] = None
-    tags: List[str]
-    text: str
-    publishDate: datetime
-    updatedDate: datetime
+    message: str
     owner: Owner
+    post: str
+    publishDate: datetime
 
 
-# для get_list_posts, get_list_posts_by_user_id
-class PostListResponseModel(BaseModel):
+# для get_list_by_user_id, get_list_by_post_id, get_list
+class CommentList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    data: List[PostResponseModel]
+    data: List[CommentResponse]
     total: int
     page: int
     limit: int
 
 
 # для delete
-class PostDeleteResponseModel(BaseModel):
+class CommentDeleteResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
+
     id: str

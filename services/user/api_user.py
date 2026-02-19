@@ -11,7 +11,7 @@ from services.user.user_payloads import UserPayloads
 class ApiUser(Helper):
     def __init__(self, http_session: requests.Session, endpoints: UserEndpoints, timeout: int = 15):
         self.http_session = http_session
-        self.endpoints = endpoints
+        self.endpoint = endpoints
         self.timeout = timeout
 
     def _json(self, response: requests.Response) -> dict:
@@ -26,7 +26,7 @@ class ApiUser(Helper):
         return body
 
     # ----------------------------------------------------- CRUD -------------------------------------------------------
-    # CRUD = Create, Read, Update, Delete (создать, прочитать, обновить, удалить)
+    # CRUD = Create, Read, Update, Delete (создать, прочитать, обновить, удалить), включая вызовы списков.
 
     @allure.step("POST == /user/create")
     def create_user(self, payload: dict | None = None) -> UserResponseModel:
@@ -37,7 +37,7 @@ class ApiUser(Helper):
 
         # 2) Отправляем запрос POST на эндпоинт создания пользователя
         response = self.http_session.post(
-            url=self.endpoints.create_user(),
+            url=self.endpoint.create_user(),
             json=payload,
             timeout=self.timeout
         )
@@ -57,7 +57,7 @@ class ApiUser(Helper):
 
         # 1) Отправляем GET запрос на /user с query-параметрами limit/page
         response = self.http_session.get(
-            url=self.endpoints.get_list_users(),
+            url=self.endpoint.get_list_users(),
             params={"page": page, "limit": limit},
             timeout=self.timeout
         )
@@ -79,7 +79,7 @@ class ApiUser(Helper):
 
         # 1) Отправляем GET запрос на /user/{user_id}
         response = self.http_session.get(
-            url=self.endpoints.get_user_by_id(user_id),
+            url=self.endpoint.get_user_by_id(user_id),
             timeout=self.timeout
         )
 
@@ -101,7 +101,7 @@ class ApiUser(Helper):
 
         # 2) Отправляем PUT запрос на /user/{user_id} с JSON телом
         response = self.http_session.put(
-            url=self.endpoints.update_user(user_id),
+            url=self.endpoint.update_user(user_id),
             json=payload,
             timeout=self.timeout
         )
@@ -120,7 +120,7 @@ class ApiUser(Helper):
 
         # 1) Отправляем DELETE запрос на /user/{user_id}
         response = self.http_session.delete(
-            url=self.endpoints.delete_user(user_id),
+            url=self.endpoint.delete_user(user_id),
             timeout=self.timeout
         )
 

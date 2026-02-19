@@ -12,8 +12,8 @@ class UserPayloads:
 
         return {
             "email": unique_email,
-            "first_name": fake.first_name(),
-            "last_name": fake.last_name(),
+            "firstName": fake.first_name(),
+            "lastName": fake.last_name(),
             "dateOfBirth": fake.dateOfBirth(),
             "phone": fake.numerify("###-###-####"),
         }
