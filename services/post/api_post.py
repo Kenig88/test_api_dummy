@@ -42,9 +42,9 @@ class ApiPost(ApiBase, Helper):
         return PostResponseModel.model_validate(body)
 
     @allure.step("GET == /user/{user_id}/post")
-    def get_posts_list_by_user_id(self, user_id: str, page: int, limit: int) -> list[PostListResponseModel]:
+    def get_list_posts_by_user_id(self, user_id: str, page: int, limit: int) -> list[PostListResponseModel]:
 
-        # 1) Отправляю GET запрос с query-параметрами limit/page
+        # 1) Отправляю GET запрос с query-параметрами page/limit
         response = self.http_session.get(
             url=self.endpoint.get_list_posts_by_user_id(user_id),
             params={"page": page, "limit": limit},
@@ -66,7 +66,7 @@ class ApiPost(ApiBase, Helper):
     @allure.step("GET == /post?page=*&limit=*")
     def get_list_posts(self, page: int, limit: int) -> list[PostListResponseModel]:
 
-        # 1) Отправляю GET запрос с query-параметрами limit/page
+        # 1) Отправляю GET запрос с query-параметрами page/limit
         response = self.http_session.get(
             url=self.endpoint.get_list_posts(),
             params={"page": page, "limit": limit},
