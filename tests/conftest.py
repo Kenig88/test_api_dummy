@@ -68,20 +68,18 @@ def api_user(http_session: requests.Session, user_endpoints: UserEndpoints) -> A
 def created_user(api_user: ApiUser):
     created_user_ids: list[str] = []
 
-    def create_user():
+    def create_user(overrides: dict | None = None):
+
         # 1) генерирую базовый payload
         payload = UserPayloads.create_user_payload()
-
-        # !!!этот шаг не вставлял!! так же **overrides в параметр create_user()!!!
-        # 2) применяю переопределения (например name="Alex")
-        # payload.update(overrides)
+        if overrides:
+            payload.update(overrides)
 
         # 3) создаю пользователя
         user = api_user.create_user(payload)
 
         # 4) сохраняю id, чтобы потом удалить
         created_user_ids.append(str(user.id))
-
         return user  # возвращаем модель пользователя
 
     yield create_user
@@ -106,20 +104,22 @@ def api_post(http_session: requests.Session, post_endpoints: PostEndpoints) -> A
 
 
 @pytest.fixture(scope="session")
-def crated_post(api_post: ApiPost, created_user):
+def created_post(api_post: ApiPost, created_user):
     created_post_ids: list[str] = []
 
-    def create_post(user_id: str | None = None):
+    def create_post(user_id: str | None = None, overrides: dict | None = None):
         # если владелец не задан — создаём нового пользователя
         if user_id is None:
-            user_id = created_user
+            user = created_user()
+            user_id = str(user.id)
 
         payload = PostPayload.post_payload(user_id)
+        if overrides:
+            payload.update(overrides)
 
-        post = api_post.create_post(str(payload))
+        post = api_post.create_post(user_id=user_id, payload=payload)
 
-        created_post_ids.append(post.id)
-
+        created_post_ids.append(str(post.id))
         return post
 
     yield create_post
@@ -131,3 +131,34 @@ def crated_post(api_post: ApiPost, created_user):
 # ======================================================COMMENT=========================================================
 # ======================================================================================================================
 # ======================================================COMMENT=========================================================
+
+@pytest.fixture(scope="session")
+def comment_endpoints(base_url: str) -> CommentEndpoints:
+    return CommentEndpoints(base_url)
+
+
+@pytest.fixture(scope="session")
+def api_comment(http_session: requests.Session, comment_endpoints: CommentEndpoints) -> ApiComment:
+    return ApiComment(http_session=http_session, endpoints=comment_endpoints, timeout=DEFAULT_TIMEOUT)
+
+
+@pytest.fixture(scope="session")
+def created_comment(api_comment: ApiComment, created_user, created_post):
+    created_comment_ids: list[str] = []
+
+    def create_comment(user_id: str | None = None, post_id: str | None = None):
+        if user_id is None:
+            user_id = str(created_user().id)
+        if post_id is None:
+            post_id = str(created_post().id)
+
+        payload = CommentPayload.comment_create_payload(user_id, post_id)
+        comment = api_comment.create_comment(payload)
+
+        created_comment_ids.append(str(comment.id))
+        return comment
+
+    yield create_comment
+
+    for cid in created_comment_ids:
+        api_comment.delete_comment(cid, allow_not_found=True)

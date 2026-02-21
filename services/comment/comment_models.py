@@ -23,7 +23,7 @@ class CommentResponseModel(BaseModel):
 
 
 # для get_list_by_user_id, get_list_by_post_id, get_list
-class CommentList(BaseModel):
+class CommentsListResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     data: List[CommentResponseModel]

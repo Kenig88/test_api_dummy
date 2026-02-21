@@ -44,7 +44,7 @@ class ApiUser(ApiBase, Helper):
     @allure.step("GET == /user?page=*&limit=*")
     def get_list_users(self, page: int, limit: int) -> list[UserListResponseModel]:
 
-        # 1) Отправляю GET запрос с query-параметрами limit/page
+        # 1) Отправляю GET запрос с query-параметрами page/limit
         response = self.http_session.get(
             url=self.endpoint.get_list_users(),
             params={"page": page, "limit": limit},
