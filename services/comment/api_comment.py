@@ -3,6 +3,7 @@ from utils.helper import Helper
 import requests
 import allure
 
+from services.api_base import ApiBase
 from services.comment.comment_endpoints import CommentEndpoints
 
 
