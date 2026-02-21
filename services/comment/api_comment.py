@@ -132,4 +132,4 @@ class ApiComment(ApiBase, Helper):
 
         # 4) # 200 с JSON-телом
         body = self._json(response)
-        return [CommentDeleteResponseModel.model_validate(body) if body else None]
+        return CommentDeleteResponseModel.model_validate(body) if body else None
