@@ -7,6 +7,14 @@ from services.user.user_endpoints import UserEndpoints
 from services.user.user_payloads import UserPayloads
 from services.user.api_user import ApiUser
 
+from services.post.post_endpoints import PostEndpoints
+from services.post.post_payload import PostPayload
+from services.post.api_post import ApiPost
+
+from services.comment.comment_endpoints import CommentEndpoints
+from services.comment.comment_payload import CommentPayload
+from services.comment.api_comment import ApiComment
+
 load_dotenv()
 DEFAULT_TIMEOUT: int = 15
 
@@ -58,38 +66,66 @@ def api_user(http_session: requests.Session, user_endpoints: UserEndpoints) -> A
 
 @pytest.fixture(scope="session")
 def created_user(api_user: ApiUser):
-    created_ids: list[str] = []
+    created_user_ids: list[str] = []
 
     def create_user():
         # 1) генерирую базовый payload
         payload = UserPayloads.create_user_payload()
 
-
         # !!!этот шаг не вставлял!! так же **overrides в параметр create_user()!!!
         # 2) применяю переопределения (например name="Alex")
         # payload.update(overrides)
-
 
         # 3) создаю пользователя
         user = api_user.create_user(payload)
 
         # 4) сохраняю id, чтобы потом удалить
-        created_ids.append(str(user.id))
+        created_user_ids.append(str(user.id))
 
         return user  # возвращаем модель пользователя
 
     yield create_user
 
     # cleanup: удаляю всех созданных пользователей
-    for uid in created_ids:
+    for uid in created_user_ids:
         api_user.delete_user(uid, allow_not_found=True)
+
 
 # ========================================================POST==========================================================
 # ======================================================================================================================
 # ========================================================POST==========================================================
 
+@pytest.fixture(scope="session")
+def post_endpoints(base_url: str) -> PostEndpoints:
+    return PostEndpoints(base_url)
 
 
+@pytest.fixture(scope="session")
+def api_post(http_session: requests.Session, post_endpoints: PostEndpoints) -> ApiPost:
+    return ApiPost(http_session=http_session, endpoints=post_endpoints, timeout=DEFAULT_TIMEOUT)
+
+
+@pytest.fixture(scope="session")
+def crated_post(api_post: ApiPost, created_user):
+    created_post_ids: list[str] = []
+
+    def create_post(user_id: str | None = None):
+        # если владелец не задан — создаём нового пользователя
+        if user_id is None:
+            user_id = created_user
+
+        payload = PostPayload.post_payload(user_id)
+
+        post = api_post.create_post(str(payload))
+
+        created_post_ids.append(post.id)
+
+        return post
+
+    yield create_post
+
+    for pid in created_post_ids:
+        api_post.delete_post(pid, allow_not_found=True)
 
 
 # ======================================================COMMENT=========================================================
