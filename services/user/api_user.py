@@ -65,7 +65,7 @@ class ApiUser(ApiBase, Helper):
         return [UserListResponseModel.model_validate(users) for users in users_data]
 
     @allure.step("GET == /user/{user_id}")
-    def get_user_by_id(self, user_id: str, expected_status: int = 200):
+    def get_user_by_id(self, user_id: str, expected_status_code: int = 200):
 
         # 1) Отправляю GET запрос на /user/{user_id}
         response = self.http_session.get(
@@ -76,15 +76,15 @@ class ApiUser(ApiBase, Helper):
         # 2) Прикладываю ответ в Allure
         self.attach_response_safe(response)
 
-        # 3) # проверяю статус (200 по умолчанию, или тот что передал)
-        body = self._check_status_code(response, ok_statuses=[expected_status])
+        # 3) # проверяю статус (200 по умолчанию, или тот что передал в "ok_statuses")
+        body = self._check_status_code(response, ok_statuses=[expected_status_code])
 
-        # 4.1) если ожидаем 200 — парсю в модель
-        if expected_status == 200:
+        # 4.1) если ожидаю 200 — парсю в модель
+        if expected_status_code == 200:
             return UserResponseModel.model_validate(body)
 
         # 4.2) если ожидаю 404 (после удаления)
-        if expected_status == 404:
+        if expected_status_code == 404:
             return UserAfterDeleteResponseModel.model_validate(body)
 
     @allure.step("PUT == /user/{user_id}")

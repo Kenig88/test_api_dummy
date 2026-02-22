@@ -44,4 +44,6 @@ class UserDeleteResponseModel(BaseModel):
 
 
 class UserAfterDeleteResponseModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     error: str

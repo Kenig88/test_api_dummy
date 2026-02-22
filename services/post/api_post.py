@@ -6,7 +6,8 @@ from services.api_base import ApiBase
 from utils.helper import Helper
 from services.post.post_endpoints import PostEndpoints
 from services.post.post_payload import PostPayload
-from services.post.post_models import PostResponseModel, PostListResponseModel, PostDeleteResponseModel
+from services.post.post_models import PostResponseModel, PostListResponseModel, PostDeleteResponseModel, \
+    PostAfterDeleteResponseModel
 
 
 class ApiPost(ApiBase, Helper):
@@ -86,7 +87,7 @@ class ApiPost(ApiBase, Helper):
         return [PostListResponseModel.model_validate(posts) for posts in posts_data]
 
     @allure.step("GET == /post/{post_id}")
-    def get_post_by_id(self, post_id: str) -> PostResponseModel:
+    def get_post_by_id(self, post_id: str, expected_status_code: int = 200):
 
         # 1) Отправляю GET запрос на /post/{post_id}
         response = self.http_session.get(
@@ -97,11 +98,16 @@ class ApiPost(ApiBase, Helper):
         # 2) Прикладываю ответ в Allure
         self.attach_response_safe(response)
 
-        # 3) Ожидаю статус 200 (успешно)
-        body = self._check_status_code(response, ok_statuses=[200])
+        # 3) # проверяю статус (200 по умолчанию, или тот что передал в "ok_statuses")
+        body = self._check_status_code(response, ok_statuses=[expected_status_code])
 
-        # 4) Превращаю JSON в модель
-        return PostResponseModel.model_validate(body)
+        # 4.1) если ожидаю 200 — парсю в модель
+        if expected_status_code == 200:
+            return PostResponseModel.model_validate(body)
+
+        # 4.2) если ожидаю 404 (после удаления)
+        if expected_status_code == 404:
+            return PostAfterDeleteResponseModel.model_validate(body)
 
     @allure.step("PUT == /post/{post_id}")
     def update_post(self, post_id: str, payload: dict | None = None) -> PostResponseModel:
