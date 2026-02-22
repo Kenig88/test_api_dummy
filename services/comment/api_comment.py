@@ -11,7 +11,7 @@ from services.comment.comment_models import CommentResponseModel, CommentsListRe
 
 class ApiComment(ApiBase, Helper):
     def __init__(self, http_session: requests.Session, endpoints: CommentEndpoints, timeout: int = 15):
-        super().__init__(self, http_session=http_session, timeout=timeout)
+        super().__init__(http_session=http_session, timeout=timeout)
         self.endpoint = endpoints
 
     # ----------------------------------------------------- CRUD -------------------------------------------------------
@@ -58,10 +58,10 @@ class ApiComment(ApiBase, Helper):
         body = self._check_status_code(response, ok_statuses=[200])
 
         # 4) Обычно список лежит в поле "data":
-        comments_data = body.get("comments", [])
+        comments_data = body.get("data", [])
 
         # 5) Каждый элемент списка превращаю в CommentsListResponseModel
-        return [CommentsListResponseModel.model_validate(comments for comments in comments_data)]
+        return [CommentsListResponseModel.model_validate(comments) for comments in comments_data]
 
     @allure.step("GET == /post/{post_id}/comment")
     def get_clist_comments_by_post_id(self, post_id: str, page: int, limit: int) -> list[CommentsListResponseModel]:
@@ -80,7 +80,7 @@ class ApiComment(ApiBase, Helper):
         body = self._check_status_code(response, ok_statuses=[200])
 
         # 4) Обычно список лежит в поле "data":
-        comments_data = body.get("comments", [])
+        comments_data = body.get("data", [])
 
         # 5) Каждый элемент списка превращаю в CommentsListResponseModel
         return [CommentsListResponseModel.model_validate(comments) for comments in comments_data]

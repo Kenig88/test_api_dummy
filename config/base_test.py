@@ -5,6 +5,9 @@ from services.comment.api_comment import ApiComment
 
 
 class BaseTest:
+    api_user: ApiUser
+    api_post: ApiPost
+    api_comment: ApiComment
 
     @pytest.fixture(autouse=True)
     def _init_clients(self, api_user: ApiUser, api_post: ApiPost, api_comment: ApiComment):
