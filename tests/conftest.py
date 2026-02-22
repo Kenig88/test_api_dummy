@@ -113,7 +113,7 @@ def created_post(api_post: ApiPost, created_user):
             user = created_user()
             user_id = str(user.id)
 
-        payload = PostPayload.post_payload(user_id)
+        payload = PostPayload.create_post_payload(user_id)
         if overrides:
             payload.update(overrides)
 

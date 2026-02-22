@@ -14,7 +14,7 @@ class UserPayloads:
             "email": unique_email,
             "firstName": fake.first_name(),
             "lastName": fake.last_name(),
-            "dateOfBirth": fake.dateOfBirth(),
+            "dateOfBirth": fake.date_of_birth().isoformat(),
             "phone": fake.numerify("###-###-####"),
         }
 
@@ -22,6 +22,6 @@ class UserPayloads:
     def update_user_payload() -> dict:
         return {
             "firstName": fake.first_name(),
-            "lastName": fake.lastName(),
+            "lastName": fake.last_name(),
             "phone": fake.numerify("###-###-####"),
         }

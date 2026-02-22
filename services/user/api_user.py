@@ -6,7 +6,8 @@ from services.api_base import ApiBase
 from utils.helper import Helper
 from services.user.user_endpoints import UserEndpoints
 from services.user.user_payloads import UserPayloads
-from services.user.user_models import UserResponseModel, UserListResponseModel, UserDeleteResponseModel
+from services.user.user_models import UserResponseModel, UserListResponseModel, UserDeleteResponseModel, \
+    UserAfterDeleteResponseModel
 
 
 class ApiUser(ApiBase, Helper):
@@ -64,7 +65,7 @@ class ApiUser(ApiBase, Helper):
         return [UserListResponseModel.model_validate(users) for users in users_data]
 
     @allure.step("GET == /user/{user_id}")
-    def get_user_by_id(self, user_id: str) -> UserResponseModel:
+    def get_user_by_id(self, user_id: str, expected_status: int = 200):
 
         # 1) Отправляю GET запрос на /user/{user_id}
         response = self.http_session.get(
@@ -75,11 +76,16 @@ class ApiUser(ApiBase, Helper):
         # 2) Прикладываю ответ в Allure
         self.attach_response_safe(response)
 
-        # 3) Ожидаю статус 200 (успешно)
-        body = self._check_status_code(response, ok_statuses=[200])
+        # 3) # проверяю статус (200 по умолчанию, или тот что передал)
+        body = self._check_status_code(response, ok_statuses=[expected_status])
 
-        # 4) Превращаю JSON в модель
-        return UserResponseModel.model_validate(body)
+        # 4.1) если ожидаем 200 — парсю в модель
+        if expected_status == 200:
+            return UserResponseModel.model_validate(body)
+
+        # 4.2) если ожидаю 404 (после удаления)
+        if expected_status == 404:
+            return UserAfterDeleteResponseModel.model_validate(body)
 
     @allure.step("PUT == /user/{user_id}")
     def update_user(self, user_id: str, payload: dict | None = None) -> UserResponseModel:

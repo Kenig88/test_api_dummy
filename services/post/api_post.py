@@ -22,7 +22,7 @@ class ApiPost(ApiBase, Helper):
 
         # 1) Если тест не передал payload, беру "шаблонный" payload
         if payload is None:
-            payload = PostPayload.post_payload(user_id)
+            payload = PostPayload.create_post_payload(user_id)
 
         # 2) Отправляю запрос POST на эндпоинт создания поста
         response = self.http_session.post(
@@ -108,7 +108,7 @@ class ApiPost(ApiBase, Helper):
 
         # 1) Если тест не передал payload, беру "шаблонный" payload
         if payload is None:
-            payload = PostPayload.post_payload(post_id)
+            payload = PostPayload.update_post_payload()
 
         # 2) Отправляю PUT запрос на /post/{post_id} с JSON телом
         response = self.http_session.put(
