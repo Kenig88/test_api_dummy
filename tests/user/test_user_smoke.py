@@ -10,7 +10,7 @@ from services.user.user_payloads import UserPayloads
 @pytest.mark.smoke
 class TestUserSmoke(BaseTest):
 
-    @allure.title("Smoke: CREATE -> GET by id -> PUT -> GET by id -> DELETE")
+    @allure.title("Smoke: CREATE -> GET by id -> PUT -> GET by id -> DELETE -> GET by id")
     def test_user_smoke(self, api_user, created_user):
         with allure.step("test_user_smoke --> POST == /user/create"):
             user = created_user()
@@ -19,11 +19,17 @@ class TestUserSmoke(BaseTest):
             assert user.email
             assert user.firstName
             assert user.lastName
+            assert user.dateOfBirth
+            assert user.phone
 
         with allure.step("test_user_smoke --> GET == /user/{user_id}"):
             got = api_user.get_user_by_id(user_id)
             assert str(got.id) == user_id
             assert got.email == user.email
+            assert got.firstName == user.firstName
+            assert got.lastName == user.lastName
+            assert got.dateOfBirth == user.dateOfBirth
+            assert got.phone == user.phone
 
         with allure.step("test_user_smoke --> PUT == /user/{user_id}"):
             update_payload = UserPayloads.update_user_payload()
@@ -44,6 +50,7 @@ class TestUserSmoke(BaseTest):
 
         with allure.step("test_user_smoke --> GET == after update /user/{user_id}"):
             got2 = api_user.get_user_by_id(user_id)
+
             for field in ["firstName", "lastName", "phone"]:
                 if field in update_payload:
                     assert getattr(got2, field) == update_payload[field]
@@ -53,5 +60,5 @@ class TestUserSmoke(BaseTest):
             assert str(deleted_user.id) == user_id
 
         with allure.step("test_user_smoke --> GET == after delete should be 404"):
-            err = api_user.get_user_by_id(user_id, expected_status=404)
+            err = api_user.get_user_by_id(user_id, expected_status_code=404)
             assert err.error == "RESOURCE_NOT_FOUND"

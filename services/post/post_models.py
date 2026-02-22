@@ -41,3 +41,9 @@ class PostDeleteResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
+
+
+class PostAfterDeleteResponseModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    error: str
