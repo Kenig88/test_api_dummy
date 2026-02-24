@@ -24,20 +24,20 @@ class TestCommentSmoke(BaseTest):
 
         with allure.step("test_comment_smoke -> GET == /user/{user_id}/comment"):
             response_user = self.api_comment.get_list_comments_by_user_id(
-                user_id=str(user.id),
+                user_id=user.id,
                 page=0,
                 limit=10
             )
             comments_user = response_user.data
             assert any(comment.id == comment_id for comment in comments_user)
-            assert any(comment.owner.id == str(user.id) for comment in comments_user)
+            assert any(comment.owner.id == user.id for comment in comments_user)
             assert response_user.page == 0
             assert response_user.limit == 10
             assert response_user.total >= 1
 
         with allure.step("test_comment_smoke -> GET == /post/{post_id}/comment"):
             response_post = self.api_comment.get_list_comments_by_post_id(
-                post_id=str(post.id),
+                post_id=post.id,
                 page=0,
                 limit=15
             )

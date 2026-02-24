@@ -25,7 +25,7 @@ class TestUserSmoke(BaseTest):
 
         with allure.step("test_user_smoke --> GET == /user/{user_id}"):
             got = self.api_user.get_user_by_id(user_id)
-            assert str(got.id) == user_id
+            assert got.id == user_id
             assert got.email == user.email
             assert got.firstName == user.firstName
             assert got.lastName == user.lastName
@@ -35,7 +35,7 @@ class TestUserSmoke(BaseTest):
         with allure.step("test_user_smoke --> PUT == /user/{user_id}"):
             update_payload = UserPayloads.update_user_payload()
             updated_user = self.api_user.update_user(user_id, update_payload)
-            assert str(updated_user.id) == user_id
+            assert updated_user.id == user_id
 
             # это тоже самое что if внизу, только код короче и удобнее
             for field in ["firstName", "lastName", "phone"]:
@@ -58,7 +58,7 @@ class TestUserSmoke(BaseTest):
 
         with allure.step("test_user_smoke --> DELETE == /user/{user_id}"):
             deleted_user = self.api_user.delete_user(user_id)
-            assert str(deleted_user.id) == user_id
+            assert deleted_user.id == user_id
 
         with allure.step("test_user_smoke --> GET == after delete should be 404"):
             err = self.api_user.get_user_by_id(user_id, expected_status_code=404)

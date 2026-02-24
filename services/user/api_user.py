@@ -43,7 +43,7 @@ class ApiUser(ApiBase, Helper):
         return UserResponseModel.model_validate(body)
 
     @allure.step("GET == /user?page=*&limit=*")
-    def get_list_users(self, page: int, limit: int) -> list[UserListResponseModel]:
+    def get_list_users(self, page: int, limit: int) -> UserListResponseModel:
 
         # 1) Отправляю GET запрос с query-параметрами page/limit
         response = self.http_session.get(
@@ -55,14 +55,11 @@ class ApiUser(ApiBase, Helper):
         # 2) Прикладываю ответ в Allure
         self.attach_response_safe(response)
 
-        # 3) Проверяю, что сервер вернул 200
+        # 3) Проверяю, что сервер вернул 200 и забираю JSON body
         body = self._check_status_code(response, ok_statuses=[200])
 
-        # 4) Обычно список лежит в поле "data":
-        users_data = body.get("data", [])
-
-        # 5) Каждый элемент списка превращаю в UserListResponseModel
-        return [UserListResponseModel.model_validate(users) for users in users_data]
+        # 4) Валидирую ответ как пагинированный список (data + total/page/limit)
+        return UserListResponseModel.model_validate(body)
 
     @allure.step("GET == /user/{user_id}")
     def get_user_by_id(self, user_id: str, expected_status_code: int = 200):
@@ -92,7 +89,7 @@ class ApiUser(ApiBase, Helper):
 
         # 1) Если тест не передал payload, беру "шаблонный" payload
         if payload is None:
-            payload = UserPayloads.create_user_payload()
+            payload = UserPayloads.update_user_payload()
 
         # 2) Отправляю PUT запрос на /user/{user_id} с JSON телом
         response = self.http_session.put(
