@@ -23,21 +23,21 @@ class TestPostSmoke(BaseTest):
             assert post.image
             assert isinstance(post.likes, int) # единственный int
             assert post.tags
-            assert str(post.owner.id) == user_id
+            assert post.owner.id == user_id
 
         with allure.step("test_post_smoke --> GET == /post/{post_id}"):
             got = self.api_post.get_post_by_id(post_id)
-            assert str(got.id) == post_id
+            assert got.id == post_id
             assert got.text == post.text
             assert got.image == post.image
             assert isinstance(got.likes, int) # единственный int
             assert got.tags == post.tags
-            assert str(got.owner.id) == user_id
+            assert got.owner.id == user_id
 
         with allure.step("test_post_smoke --> PUT == /post/{post_id}"):
             update_payload = PostPayload.update_post_payload()
             updated_post = self.api_post.update_post(post_id, update_payload)
-            assert str(updated_post.id) == post_id
+            assert updated_post.id == post_id
 
             for field in ["text", "image", "likes", "tags"]:
                 if field in update_payload:
@@ -51,7 +51,7 @@ class TestPostSmoke(BaseTest):
 
         with allure.step("test_post_smoke --> DELETE == /post/{post_id}"):
             deleted_post = self.api_post.delete_post(post_id)
-            assert str(deleted_post.id) == post_id
+            assert deleted_post.id == post_id
 
         with allure.step("test_post_smoke --> GET == after delete should be 404"):
             err = self.api_post.get_post_by_id(post_id, expected_status_code=404)

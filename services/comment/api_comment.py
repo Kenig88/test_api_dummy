@@ -1,6 +1,5 @@
 import allure
 import requests
-from typing import Optional
 
 from services.api_base import ApiBase
 from utils.helper import Helper

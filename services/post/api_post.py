@@ -43,7 +43,7 @@ class ApiPost(ApiBase, Helper):
         return PostResponseModel.model_validate(body)
 
     @allure.step("GET == /user/{user_id}/post")
-    def get_list_posts_by_user_id(self, user_id: str, page: int, limit: int) -> list[PostListResponseModel]:
+    def get_list_posts_by_user_id(self, user_id: str, page: int, limit: int) -> PostListResponseModel:
 
         # 1) Отправляю GET запрос с query-параметрами page/limit
         response = self.http_session.get(
@@ -58,14 +58,11 @@ class ApiPost(ApiBase, Helper):
         # 3) Проверяю, что сервер вернул 200
         body = self._check_status_code(response, ok_statuses=[200])
 
-        # 4) Обычно список лежит в поле "data":
-        posts_data = body.get("data", [])
-
-        # 5) Каждый элемент списка превращаю в PostListResponseModel
-        return [PostListResponseModel.model_validate(posts) for posts in posts_data]
+        # 4) Валидирую ответ как пагинированный список (data + total/page/limit)
+        return PostListResponseModel.model_validate(body)
 
     @allure.step("GET == /post?page=*&limit=*")
-    def get_list_posts(self, page: int, limit: int) -> list[PostListResponseModel]:
+    def get_list_posts(self, page: int, limit: int) -> PostListResponseModel:
 
         # 1) Отправляю GET запрос с query-параметрами page/limit
         response = self.http_session.get(
@@ -80,11 +77,8 @@ class ApiPost(ApiBase, Helper):
         # 3) Проверяю, что сервер вернул 200
         body = self._check_status_code(response, ok_statuses=[200])
 
-        # 4) Обычно список лежит в поле "data":
-        posts_data = body.get("data", [])
-
-        # 5) Каждый элемент списка превращаю в PostsListResponseModel
-        return [PostListResponseModel.model_validate(posts) for posts in posts_data]
+        # 4) Валидирую ответ как пагинированный список (data + total/page/limit)
+        return PostListResponseModel.model_validate(body)
 
     @allure.step("GET == /post/{post_id}")
     def get_post_by_id(self, post_id: str, expected_status_code: int = 200):
