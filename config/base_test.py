@@ -10,7 +10,7 @@ class BaseTest:
     api_comment: ApiComment
 
     @pytest.fixture(autouse=True)
-    def _init_clients(self, api_user: ApiUser, api_post: ApiPost, api_comment: ApiComment):
+    def _init_clients(self, api_user, api_post, api_comment):
         self.api_user = api_user
         self.api_post = api_post
         self.api_comment = api_comment

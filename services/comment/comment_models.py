@@ -26,7 +26,7 @@ class CommentResponseModel(BaseModel):
 class CommentsListResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    data: List[CommentResponseModel]
+    data: list[CommentResponseModel]
     total: int
     page: int
     limit: int
@@ -34,6 +34,12 @@ class CommentsListResponseModel(BaseModel):
 
 # для delete
 class CommentDeleteResponseModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     id: str
+
+
+class CommentAfterDeleteResponseModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    error: str

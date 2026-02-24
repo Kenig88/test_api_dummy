@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime
 
 
@@ -19,7 +19,7 @@ class PostResponseModel(BaseModel):
     image: str
     likes: int
     link: Optional[str] | None = None
-    tags: List[str]
+    tags: list[str]
     text: str
     publishDate: datetime
     updatedDate: datetime
@@ -30,7 +30,7 @@ class PostResponseModel(BaseModel):
 class PostListResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    data: List[PostResponseModel]
+    data: list[PostResponseModel]
     total: int
     page: int
     limit: int
@@ -38,12 +38,12 @@ class PostListResponseModel(BaseModel):
 
 # для delete
 class PostDeleteResponseModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     id: str
 
 
 class PostAfterDeleteResponseModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     error: str

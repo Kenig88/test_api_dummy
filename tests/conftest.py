@@ -150,10 +150,10 @@ def created_comment(api_comment: ApiComment, created_user, created_post):
         if user_id is None:
             user_id = str(created_user().id)
         if post_id is None:
-            post_id = str(created_post().id)
+            post_id = str(created_post(user_id=user_id).id)
 
         payload = CommentPayload.comment_create_payload(user_id, post_id)
-        comment = api_comment.create_comment(payload)
+        comment = api_comment.create_comment(user_id=user_id, post_id=post_id, payload=payload)
 
         created_comment_ids.append(str(comment.id))
         return comment
@@ -161,4 +161,4 @@ def created_comment(api_comment: ApiComment, created_user, created_post):
     yield create_comment
 
     for cid in created_comment_ids:
-        api_comment.delete_comment(cid, allow_not_found=True)
+        api_comment.delete_comment(cid)

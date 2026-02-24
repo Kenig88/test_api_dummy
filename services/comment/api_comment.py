@@ -6,7 +6,8 @@ from services.api_base import ApiBase
 from utils.helper import Helper
 from services.comment.comment_endpoints import CommentEndpoints
 from services.comment.comment_payload import CommentPayload
-from services.comment.comment_models import CommentResponseModel, CommentsListResponseModel, CommentDeleteResponseModel
+from services.comment.comment_models import (CommentResponseModel, CommentsListResponseModel, \
+                                             CommentDeleteResponseModel, CommentAfterDeleteResponseModel)
 
 
 class ApiComment(ApiBase, Helper):
@@ -17,7 +18,7 @@ class ApiComment(ApiBase, Helper):
     # ----------------------------------------------------- CRUD -------------------------------------------------------
     # CRUD = Create, Read, Update, Delete (создать, прочитать, обновить, удалить), включая вызовы списков.
 
-    @allure.step("CREATE == /comment/create")
+    @allure.step("POST == /comment/create")
     def create_comment(self, user_id: str, post_id: str, payload: dict | None = None) -> CommentResponseModel:
 
         # 1) Если тест не передал payload, беру "шаблонный" payload
@@ -42,7 +43,7 @@ class ApiComment(ApiBase, Helper):
         return CommentResponseModel.model_validate(body)
 
     @allure.step("GET == /user/{user_id}/comment")
-    def get_list_comments_by_user_id(self, user_id: str, page: int, limit: int) -> list[CommentsListResponseModel]:
+    def get_list_comments_by_user_id(self, user_id: str, page: int, limit: int) -> CommentsListResponseModel:
 
         # 1) Отправляю GET запрос с query-параметрами page/limit
         response = self.http_session.get(
@@ -54,17 +55,14 @@ class ApiComment(ApiBase, Helper):
         # 2) Прикладываю ответ в Allure
         self.attach_response_safe(response)
 
-        # 3) Проверяю, что сервер вернул 200
+        # 3) Проверяю, что сервер вернул 200 и забираю JSON body
         body = self._check_status_code(response, ok_statuses=[200])
 
-        # 4) Обычно список лежит в поле "data":
-        comments_data = body.get("data", [])
-
-        # 5) Каждый элемент списка превращаю в CommentsListResponseModel
-        return [CommentsListResponseModel.model_validate(comments) for comments in comments_data]
+        # 4) Валидирую ответ как пагинированный список (data + total/page/limit)
+        return CommentsListResponseModel.model_validate(body)
 
     @allure.step("GET == /post/{post_id}/comment")
-    def get_clist_comments_by_post_id(self, post_id: str, page: int, limit: int) -> list[CommentsListResponseModel]:
+    def get_list_comments_by_post_id(self, post_id: str, page: int, limit: int) -> CommentsListResponseModel:
 
         # 1) Отправляю GET запрос с query-параметрами page/limit
         response = self.http_session.get(
@@ -76,17 +74,14 @@ class ApiComment(ApiBase, Helper):
         # 2) Прикладываю ответ в Allure
         self.attach_response_safe(response)
 
-        # 3) Проверяю, что сервер вернул 200
+        # 3) Проверяю, что сервер вернул 200 и забираю JSON body
         body = self._check_status_code(response, ok_statuses=[200])
 
-        # 4) Обычно список лежит в поле "data":
-        comments_data = body.get("data", [])
-
-        # 5) Каждый элемент списка превращаю в CommentsListResponseModel
-        return [CommentsListResponseModel.model_validate(comments) for comments in comments_data]
+        # 4) Валидирую ответ как пагинированный список (data + total/page/limit)
+        return CommentsListResponseModel.model_validate(body)
 
     @allure.step("GET == /comment?page=*&limit=*")
-    def get_list_comments(self, page: int, limit: int) -> list[CommentsListResponseModel]:
+    def get_list_comments(self, page: int, limit: int) -> CommentsListResponseModel:
 
         # 1) Отправляю GET запрос с query-параметрами page/limit
         response = self.http_session.get(
@@ -98,17 +93,14 @@ class ApiComment(ApiBase, Helper):
         # 2) Прикладываю ответ в Allure
         self.attach_response_safe(response)
 
-        # 3) Проверяю, что сервер вернул 200
+        # 3) Проверяю, что сервер вернул 200 и забираю JSON body
         body = self._check_status_code(response, ok_statuses=[200])
 
-        # 4) Обычно список лежит в поле "data":
-        comments_data = body.get("data", [])
-
-        # 5) Каждый элемент списка превращаю в CommentsListResponseModel
-        return [CommentsListResponseModel.model_validate(comments) for comments in comments_data]
+        # 4) Валидирую ответ как пагинированный список (data + total/page/limit)
+        return CommentsListResponseModel.model_validate(body)
 
     @allure.step("DELETE == /comment/{comment_id}")
-    def delete_comment(self, comment_id: str, allow_not_found: bool = False) -> Optional[CommentDeleteResponseModel]:
+    def delete_comment(self, comment_id: str):
 
         # 1) Отправляю DELETE запрос на /comment/{comment_id}
         response = self.http_session.delete(
@@ -119,17 +111,13 @@ class ApiComment(ApiBase, Helper):
         # 2) Прикладываю ответ в Allure
         self.attach_response_safe(response)
 
-        # 3.1) Если "не найдено" и сервер вернул 404 или cleanup в фикстуре
-        if allow_not_found and response.status_code == 404:
-            return None
+        # 3) Допускаю только 200 (удалён) или 404 (не найден)
+        body = self._check_status_code(response, ok_statuses=[200, 404])
 
-        # Разрешаю только "успешные" коды
-        self._check_status_code(response, ok_statuses=[200, 204])
+        # 4) Если удаление прошло успешно (200) — валидирую как модель успешного удаления
+        if response.status_code == 200:
+            return CommentDeleteResponseModel.model_validate(body)
 
-        # 3.2) Если тела нет = 204
-        if response.status_code == 204:
-            return None
-
-        # 4) # 200 с JSON-телом
-        body = self._json(response)
-        return CommentDeleteResponseModel.model_validate(body) if body else None
+        # 5) Если не найдено (404) — валидирую как модель ошибки
+        if response.status_code == 404:
+            return CommentAfterDeleteResponseModel.model_validate(body)

@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, EmailStr
 
 # Для create, get user by id, update user
 class UserResponseModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     id: str
     firstName: str = Field(min_length=2, max_length=50)
@@ -18,7 +18,7 @@ class UserResponseModel(BaseModel):
 
 
 class UserList(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     id: str
     title: Optional[str] | None = None
@@ -29,7 +29,7 @@ class UserList(BaseModel):
 
 # для get_list_users()
 class UserListResponseModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     data: List[UserList]
     total: int
@@ -38,12 +38,12 @@ class UserListResponseModel(BaseModel):
 
 
 class UserDeleteResponseModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     id: str
 
 
 class UserAfterDeleteResponseModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     error: str

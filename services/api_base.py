@@ -15,5 +15,9 @@ class ApiBase:
 
     def _check_status_code(self, response: requests.Response, ok_statuses: list[int]) -> dict:
         body = self._json(response)
-        assert response.status_code in ok_statuses, body
+        assert response.status_code in ok_statuses, {
+            "status": response.status_code,
+            "url": str(response.url),
+            "body": body
+        }
         return body
