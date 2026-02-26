@@ -38,9 +38,76 @@ jobs:
         run: |
           docker compose run --rm ${{ github.event.inputs.suite }}
 
-      - name: Upload Allure raw results
-        if: always()
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Allure CLI
+        run: |
+          ALLURE_VERSION=2.27.0
+          curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
+          tar -xzf allure.tgz
+          sudo mv allure-${ALLURE_VERSION} /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+          allure --version
+
+      - name: Generate Allure HTML report
+        run: |
+          allure generate allure-results -o allure-report --clean
+
+      - name: Upload Allure HTML report
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results-${{ github.event.inputs.suite }}
-          path: allure-results
+          name: allure-html-${{ github.event.inputs.suite }}
+          path: allure-report
+
+
+#ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №1
+#name: Run Docker Tests (Manual)
+#
+#on:
+#  workflow_dispatch:
+#    inputs:
+#      suite:
+#        description: "Test suite to run"
+#        required: true
+#        default: "all"
+#        type: choice
+#        options:
+#          - all
+#          - smoke
+#          - regression
+#          - negative
+#
+#jobs:
+#  run-tests:
+#    runs-on: ubuntu-latest
+#
+#    env:
+#      BASE_URL: ${{ secrets.BASE_URL }}
+#      API_TOKEN: ${{ secrets.API_TOKEN }}
+#
+#    steps:
+#      - name: Checkout repo
+#        uses: actions/checkout@v4
+#
+#      - name: Show Docker version
+#        run: |
+#          docker version
+#          docker compose version
+#
+#      - name: Build Docker image
+#        run: docker compose build --no-cache
+#
+#      - name: Run selected suite
+#        run: |
+#          docker compose run --rm ${{ github.event.inputs.suite }}
+#
+#      - name: Upload Allure raw results
+#        if: always()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: allure-results-${{ github.event.inputs.suite }}
+#          path: allure-results
