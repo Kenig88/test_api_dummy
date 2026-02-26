@@ -1,4 +1,4 @@
-name: Run Docker Tests (Manual + Pages)
+name: Run Docker Tests (Manual + Pages + History)
 
 on:
   workflow_dispatch:
@@ -58,11 +58,26 @@ jobs:
           sudo ln -s /opt/allure/bin/allure /usr/bin/allure
           allure --version
 
+      # ⬇️ ВАЖНО — скачиваем предыдущий отчёт Pages
+      - name: Download previous Pages artifact (if exists)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          path: old-pages
+
+      # ⬇️ Если есть старая history — копируем её в allure-results
+      - name: Restore Allure history
+        run: |
+          if [ -d "old-pages/history" ]; then
+            mkdir -p allure-results/history
+            cp -r old-pages/history/* allure-results/history/ || true
+          fi
+
       - name: Generate Allure HTML report
         run: |
           allure generate allure-results -o allure-report --clean
 
-      # Готовим Pages
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4
 
@@ -73,9 +88,157 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-
-
-#ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №1
+#-
+#-
+#-
+# ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №3
+#name: Run Docker Tests (Manual + Pages)
+#
+#on:
+#  workflow_dispatch:
+#    inputs:
+#      suite:
+#        description: "Test suite to run"
+#        required: true
+#        default: "all"
+#        type: choice
+#        options:
+#          - all
+#          - smoke
+#          - regression
+#          - negative
+#
+#jobs:
+#  run-tests:
+#    runs-on: ubuntu-latest
+#
+#    permissions:
+#      contents: read
+#      pages: write
+#      id-token: write
+#
+#    env:
+#      BASE_URL: ${{ secrets.BASE_URL }}
+#      API_TOKEN: ${{ secrets.API_TOKEN }}
+#
+#    steps:
+#      - name: Checkout repo
+#        uses: actions/checkout@v4
+#
+#      - name: Show Docker version
+#        run: |
+#          docker version
+#          docker compose version
+#
+#      - name: Build Docker image
+#        run: docker compose build --no-cache
+#
+#      - name: Run selected suite
+#        run: |
+#          docker compose run --rm ${{ github.event.inputs.suite }}
+#
+#      - name: Install Java
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: "17"
+#
+#      - name: Install Allure CLI
+#        run: |
+#          ALLURE_VERSION=2.27.0
+#          curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
+#          tar -xzf allure.tgz
+#          sudo mv allure-${ALLURE_VERSION} /opt/allure
+#          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+#          allure --version
+#
+#      - name: Generate Allure HTML report
+#        run: |
+#          allure generate allure-results -o allure-report --clean
+#
+#      # Готовим Pages
+#      - name: Setup GitHub Pages
+#        uses: actions/configure-pages@v4
+#
+#      - name: Upload Pages artifact
+#        uses: actions/upload-pages-artifact@v3
+#        with:
+#          path: allure-report
+#
+#      - name: Deploy to GitHub Pages
+#        uses: actions/deploy-pages@v4
+#-
+#-
+#-
+# ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №2
+#name: Run Docker Tests (Manual)
+#
+#on:
+#  workflow_dispatch:
+#    inputs:
+#      suite:
+#        description: "Test suite to run"
+#        required: true
+#        default: "all"
+#        type: choice
+#        options:
+#          - all
+#          - smoke
+#          - regression
+#          - negative
+#
+#jobs:
+#  run-tests:
+#    runs-on: ubuntu-latest
+#
+#    env:
+#      BASE_URL: ${{ secrets.BASE_URL }}
+#      API_TOKEN: ${{ secrets.API_TOKEN }}
+#
+#    steps:
+#      - name: Checkout repo
+#        uses: actions/checkout@v4
+#
+#      - name: Show Docker version
+#        run: |
+#          docker version
+#          docker compose version
+#
+#      - name: Build Docker image
+#        run: docker compose build --no-cache
+#
+#      - name: Run selected suite
+#        run: |
+#          docker compose run --rm ${{ github.event.inputs.suite }}
+#
+#      - name: Install Java
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: "17"
+#
+#      - name: Install Allure CLI
+#        run: |
+#          ALLURE_VERSION=2.27.0
+#          curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
+#          tar -xzf allure.tgz
+#          sudo mv allure-${ALLURE_VERSION} /opt/allure
+#          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+#          allure --version
+#
+#      - name: Generate Allure HTML report
+#        run: |
+#          allure generate allure-results -o allure-report --clean
+#
+#      - name: Upload Allure HTML report
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: allure-html-${{ github.event.inputs.suite }}
+#          path: allure-report
+#-
+#-
+#-
+# ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №1
 #name: Run Docker Tests (Manual)
 #
 #on:
