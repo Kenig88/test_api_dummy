@@ -44,6 +44,10 @@ jobs:
         run: |
           docker compose run --rm ${{ github.event.inputs.suite }}
 
+      - name: Fix permissions after Docker
+        run: |
+          sudo chown -R $USER:$USER .
+
       - name: Install Java
         uses: actions/setup-java@v4
         with:
