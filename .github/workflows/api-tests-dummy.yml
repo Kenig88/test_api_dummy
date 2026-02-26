@@ -1,4 +1,4 @@
-name: Run Docker Tests (Manual)
+name: Run Docker Tests (Manual + Pages)
 
 on:
   workflow_dispatch:
@@ -17,6 +17,11 @@ on:
 jobs:
   run-tests:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
 
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
@@ -57,11 +62,17 @@ jobs:
         run: |
           allure generate allure-results -o allure-report --clean
 
-      - name: Upload Allure HTML report
-        uses: actions/upload-artifact@v4
+      # Готовим Pages
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: allure-html-${{ github.event.inputs.suite }}
           path: allure-report
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
 
 
 #ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №1
