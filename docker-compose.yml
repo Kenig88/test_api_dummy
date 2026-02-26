@@ -15,16 +15,16 @@ x-base: &base
 services:
   all:
     <<: *base
-    command: ["pytest", "-sv", "--alluredir=allure-results", "--clean-alluredir"]
+    command: [ "pytest", "-sv", "--alluredir=allure-results", "--clean-alluredir" ]
 
   smoke:
     <<: *base
-    command: ["pytest", "-sv", "-m", "smoke", "--alluredir=allure-results", "--clean-alluredir"]
+    command: [ "pytest", "-sv", "-m", "smoke", "--alluredir=allure-results", "--clean-alluredir" ]
 
   regression:
     <<: *base
-    command: ["pytest", "-sv", "-m", "regression", "--alluredir=allure-results", "--clean-alluredir"]
+    command: [ "pytest", "-sv", "-m", "regression", "--alluredir=allure-results", "--clean-alluredir" ]
 
   negative:
     <<: *base
-    command: ["pytest", "-sv", "-m", "negative", "--alluredir=allure-results", "--clean-alluredir"]
+    command: [ "pytest", "-sv", "-m", "negative", "--alluredir=allure-results", "--clean-alluredir" ]
