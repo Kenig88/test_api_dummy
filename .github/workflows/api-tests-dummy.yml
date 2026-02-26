@@ -1,104 +1,230 @@
-name: Test Api Dummy (Manual + Pages + History)
+name: Test Api Dummy (Manual + Pages + History)  # Название workflow (так будет отображаться во вкладке Actions)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:                             # Запуск ТОЛЬКО вручную (кнопка "Run workflow" в GitHub Actions)
     inputs:
-      suite:
-        description: "Test suite to run"
-        required: true
-        default: "all"
-        type: choice
-        options: [ all, smoke, regression, negative ]
+      suite:                                     # Параметр, который ты выбираешь при ручном запуске
+        description: "Test suite to run"         # Подсказка в UI
+        required: true                           # Нельзя запустить без выбора
+        default: "all"                           # Значение по умолчанию
+        type: choice                             # Выпадающий список
+        options: [ all, smoke, regression, negative ]  # Варианты suite (совпадают с сервисами в docker-compose.yml)
 
 jobs:
-  run-tests:
-    runs-on: ubuntu-latest
+  run-tests:                                     # Имя job (задачи) внутри workflow
+    runs-on: ubuntu-latest                       # На какой ОС крутится job (виртуалка GitHub)
 
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
+    permissions:                                 # Права, которые нужны workflow
+      contents: write                            # Нужно, чтобы пушить ветку allure-history (с историей)
+      pages: write                               # Нужно, чтобы деплоить на GitHub Pages
+      id-token: write                            # Нужно для deploy-pages (OIDC токен)
 
-    env:
-      BASE_URL: ${{ secrets.BASE_URL }}
-      API_TOKEN: ${{ secrets.API_TOKEN }}
+    env:                                         # Переменные окружения для всех шагов job
+      BASE_URL: ${{ secrets.BASE_URL }}          # Берём BASE_URL из GitHub Secrets
+      API_TOKEN: ${{ secrets.API_TOKEN }}        # Берём API_TOKEN из GitHub Secrets
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4                # Скачиваем код репозитория на runner
 
       - name: Build Docker image
-        run: docker compose build
+        run: docker compose build                # Собираем Docker-образ по Dockerfile (используется cache, быстрее)
 
       - name: Run selected suite
-        run: docker compose run --rm ${{ github.event.inputs.suite }}
+        run: docker compose run --rm ${{ github.event.inputs.suite }}  # Запускаем выбранный suite в контейнере
+                                                                       # --rm удалит контейнер после завершения
 
       - name: Fix permissions (only results)
-        run: sudo chown -R $USER:$USER allure-results || true
+        run: sudo chown -R $USER:$USER allure-results || true          # Контейнер часто создаёт файлы как root
+                                                                       # Меняем владельца папки allure-results, чтобы runner мог дальше с ней работать
+                                                                       # || true -> не падаем, даже если папки нет
 
       - name: Install Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4                # Ставим Java (нужна для Allure CLI)
         with:
-          distribution: temurin
-          java-version: "17"
+          distribution: temurin                    # Дистрибутив Java
+          java-version: "17"                       # Версия Java
 
       - name: Cache Allure
-        uses: actions/cache@v4
+        uses: actions/cache@v4                     # Кэшируем Allure CLI, чтобы не скачивать каждый раз
         with:
-          path: /opt/allure
-          key: allure-2.27.0
+          path: /opt/allure                        # Куда устанавливаем Allure (эту папку кэшируем)
+          key: allure-2.27.0                       # Ключ кэша (если поменяешь версию — поменяй ключ)
 
       - name: Install Allure CLI
-        run: |
-          if [ ! -x /opt/allure/bin/allure ]; then
-            ALLURE_VERSION=2.27.0
+        run: |                                     # Многострочный bash-скрипт
+          if [ ! -x /opt/allure/bin/allure ]; then  # Если Allure ещё не установлен (или кэш пустой)
+            ALLURE_VERSION=2.27.0                   # Версия Allure
             curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
-            tar -xzf allure.tgz
-            sudo mv allure-${ALLURE_VERSION} /opt/allure
+                                                    # Скачиваем архив Allure
+            tar -xzf allure.tgz                     # Распаковываем
+            sudo mv allure-${ALLURE_VERSION} /opt/allure  # Кладём в /opt/allure (кэшируемую папку)
           fi
-          sudo ln -sf /opt/allure/bin/allure /usr/bin/allure
-          allure --version
+          sudo ln -sf /opt/allure/bin/allure /usr/bin/allure  # Делаем команду `allure` доступной в PATH
+          allure --version                                  # Печатаем версию (полезно для логов)
 
       - name: Fetch history branch (if exists)
         run: git fetch --depth=1 origin allure-history:allure-history || true
+             # Пытаемся скачать ветку allure-history (где хранится история отчётов)
+             # --depth=1 -> быстро, берём только последний коммит
+             # || true -> если ветки ещё нет (первый запуск), workflow не падает
 
       - name: Restore previous history
         run: |
           if git show-ref --verify --quiet refs/heads/allure-history; then
+            # Если ветка allure-history реально существует локально:
             git checkout allure-history -- history || true
+            # Забираем из неё папку history (Allure trend/history хранится тут)
+
             if [ -d "history" ]; then
+              # Если папка history есть — копируем её в allure-results/history
+              # Это нужно, чтобы новый отчёт "продолжил" историю прошлых прогонов
               mkdir -p allure-results/history
               cp -r history/* allure-results/history/ || true
             fi
+
             git checkout -- .
+            # Возвращаем рабочую директорию обратно к состоянию основной ветки (чтобы ничего не "прилипло")
           fi
 
       - name: Generate Allure HTML report
         run: allure generate allure-results -o allure-report --clean
+             # Генерируем HTML отчёт из сырых результатов allure-results
+             # --clean очищает output-папку перед генерацией
 
       - name: Setup GitHub Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v4            # Подготовка окружения для GitHub Pages
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v3      # Упаковываем папку с HTML отчётом для деплоя
         with:
-          path: allure-report
+          path: allure-report                        # Именно этот каталог будет опубликован
 
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v4               # Деплой на GitHub Pages (получишь ссылку на отчёт)
 
       - name: Persist Allure history
         run: |
-          git config user.name "github-actions"
+          git config user.name "github-actions"     # Настраиваем git-автора коммитов
           git config user.email "actions@github.com"
 
-          git checkout --orphan tmp-history
-          git rm -rf . >/dev/null 2>&1 || true
+          git checkout --orphan tmp-history         # Создаём "чистую" ветку без истории (новый корень)
+          git rm -rf . >/dev/null 2>&1 || true      # Удаляем все файлы из индекса/рабочей папки (тихо)
 
-          mkdir history
+          mkdir history                              # Создаём папку history для хранения истории отчёта
           cp -r allure-report/history/* history/ || true
+                                                    # Копируем свежую историю из нового отчёта
 
-          git add history
+          git add history                            # Добавляем только папку history
           git commit -m "Update Allure history" || true
-          git branch -M allure-history
-          git push -f origin allure-history
+                                                    # Коммитим (|| true чтобы не упасть, если "нет изменений")
+          git branch -M allure-history               # Переименовываем текущую ветку в allure-history
+          git push -f origin allure-history          # Форс-пушим ветку allure-history (обновляем историю на GitHub)
+
+
+
+# !абсолютно одинаковый код что и выше!
+#name: Test Api Dummy (Manual + Pages + History)
+#
+#on:
+#  workflow_dispatch:
+#    inputs:
+#      suite:
+#        description: "Test suite to run"
+#        required: true
+#        default: "all"
+#        type: choice
+#        options: [ all, smoke, regression, negative ]
+#
+#jobs:
+#  run-tests:
+#    runs-on: ubuntu-latest
+#
+#    permissions:
+#      contents: write
+#      pages: write
+#      id-token: write
+#
+#    env:
+#      BASE_URL: ${{ secrets.BASE_URL }}
+#      API_TOKEN: ${{ secrets.API_TOKEN }}
+#
+#    steps:
+#      - name: Checkout repo
+#        uses: actions/checkout@v4
+#
+#      - name: Build Docker image
+#        run: docker compose build
+#
+#      - name: Run selected suite
+#        run: docker compose run --rm ${{ github.event.inputs.suite }}
+#
+#      - name: Fix permissions (only results)
+#        run: sudo chown -R $USER:$USER allure-results || true
+#
+#      - name: Install Java
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: "17"
+#
+#      - name: Cache Allure
+#        uses: actions/cache@v4
+#        with:
+#          path: /opt/allure
+#          key: allure-2.27.0
+#
+#      - name: Install Allure CLI
+#        run: |
+#          if [ ! -x /opt/allure/bin/allure ]; then
+#            ALLURE_VERSION=2.27.0
+#            curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
+#            tar -xzf allure.tgz
+#            sudo mv allure-${ALLURE_VERSION} /opt/allure
+#          fi
+#          sudo ln -sf /opt/allure/bin/allure /usr/bin/allure
+#          allure --version
+#
+#      - name: Fetch history branch (if exists)
+#        run: git fetch --depth=1 origin allure-history:allure-history || true
+#
+#      - name: Restore previous history
+#        run: |
+#          if git show-ref --verify --quiet refs/heads/allure-history; then
+#            git checkout allure-history -- history || true
+#            if [ -d "history" ]; then
+#              mkdir -p allure-results/history
+#              cp -r history/* allure-results/history/ || true
+#            fi
+#            git checkout -- .
+#          fi
+#
+#      - name: Generate Allure HTML report
+#        run: allure generate allure-results -o allure-report --clean
+#
+#      - name: Setup GitHub Pages
+#        uses: actions/configure-pages@v4
+#
+#      - name: Upload Pages artifact
+#        uses: actions/upload-pages-artifact@v3
+#        with:
+#          path: allure-report
+#
+#      - name: Deploy to GitHub Pages
+#        uses: actions/deploy-pages@v4
+#
+#      - name: Persist Allure history
+#        run: |
+#          git config user.name "github-actions"
+#          git config user.email "actions@github.com"
+#
+#          git checkout --orphan tmp-history
+#          git rm -rf . >/dev/null 2>&1 || true
+#
+#          mkdir history
+#          cp -r allure-report/history/* history/ || true
+#
+#          git add history
+#          git commit -m "Update Allure history" || true
+#          git branch -M allure-history
+#          git push -f origin allure-history

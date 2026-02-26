@@ -14,8 +14,7 @@ class TestUserNegative(BaseTest):
     # -------------------------------------------------APP_ID_MISSING---------------------------------------------------
     @allure.title("TestUserNegative --> APP_ID_MISSING")
     def test_app_id_missing(self):
-        session = requests.Session()
-        response = session.get(
+        response = requests.get(
             url=self.api_user.endpoint.get_list_users(),
             params={"page": 0, "limit": 5},
             timeout=self.api_user.timeout
@@ -26,11 +25,10 @@ class TestUserNegative(BaseTest):
     # -------------------------------------------------APP_ID_NOT_EXIST-------------------------------------------------
     @allure.title("TestUserNegative --> APP_ID_NOT_EXIST")
     def test_app_id_not_exist(self):
-        session = requests.Session()
-        session.headers.update({"app-id": "invalid_app_id_value"})
-        response = session.get(
+        response = requests.get(
             url=self.api_user.endpoint.get_list_users(),
             params={"page": 0, "limit": 5},
+            headers={"app-id": "invalid_app_id_value"},
             timeout=self.api_user.timeout
         )
         assert response.status_code in (401, 403), response.text
