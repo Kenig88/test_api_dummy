@@ -9,7 +9,7 @@ from config.base_test import BaseTest
 @pytest.mark.regression
 class TestCommentRegression(BaseTest):
 
-    @allure.step("TestCommentRegression --> test_create_comment()")
+    @allure.title("TestCommentRegression --> test_create_comment()")
     def test_create_comment(self, created_comment):
         comment = created_comment()
         assert comment.id is not None
@@ -17,7 +17,7 @@ class TestCommentRegression(BaseTest):
         assert comment.post is not None
         assert comment.message is not None
 
-    @allure.step("TestCommentRegression --> test_get_list_comments_by_user_id()")
+    @allure.title("TestCommentRegression --> test_get_list_comments_by_user_id()")
     def test_get_list_comments_by_user_id(self, created_comment, created_user, created_post):
         user = created_user()
         user_id = user.id
@@ -44,7 +44,7 @@ class TestCommentRegression(BaseTest):
             assert all(c.id is not None for c in response.data)
             assert any(c.id == comment_created.id for c in response.data)
 
-    @allure.step("TestCommentRegression --> test_get_list_comments_by_post_id()")
+    @allure.title("TestCommentRegression --> test_get_list_comments_by_post_id()")
     def test_get_list_comments_by_post_id(self, created_comment, created_user, created_post):
         user = created_user()
         user_id = user.id
@@ -71,7 +71,7 @@ class TestCommentRegression(BaseTest):
             assert all(c.id is not None for c in response.data)
             assert any(c.id == comment_created.id for c in response.data)
 
-    @allure.step("TestCommentRegression --> test_get_list_comments()")
+    @allure.title("TestCommentRegression --> test_get_list_comments()")
     def test_get_list_comments(self):
         page = 0
         limit = 50
@@ -89,7 +89,7 @@ class TestCommentRegression(BaseTest):
         if response.data:
             assert all(c.id is not None for c in response.data)
 
-    @allure.step("TestCommentRegression --> test_delete_comment()")
+    @allure.title("TestCommentRegression --> test_delete_comment()")
     def test_delete_comment(self, created_comment):
         comment = created_comment()
         deleted_comment = self.api_comment.delete_comment(comment.id)
