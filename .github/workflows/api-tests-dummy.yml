@@ -1,0 +1,225 @@
+name: CI (Docker + Allure + Pages)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: allure-pages
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    name: Run tests in Docker (by suites)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker version
+        run: |
+          docker version
+          docker compose version
+
+      - name: Build image
+        run: docker compose build
+
+      - name: Run suites and collect allure-results
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # список suit'ов = сервисов docker-compose
+          suites=("all" "smoke" "regression" "negative")
+
+          rm -rf .ci-allure
+          mkdir -p .ci-allure
+
+          for s in "${suites[@]}"; do
+            echo "===== Running suite: $s ====="
+
+            # прогон
+            docker compose run --rm "$s"
+
+            # каждый сервис пишет в allure-results, переименуем в отдельную папку
+            if [ -d "allure-results" ]; then
+              rm -rf ".ci-allure/allure-results-$s"
+              mv "allure-results" ".ci-allure/allure-results-$s"
+            else
+              echo "ERROR: allure-results not found after suite '$s'"
+              exit 1
+            fi
+          done
+
+      - name: Upload raw allure results (all suites)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: .ci-allure/
+          retention-days: 14
+
+  pages:
+    name: Build Allure reports + Publish to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: tests
+
+    permissions:
+      contents: write   # нужно чтобы пушить историю в ветку history
+      pages: write      # для GitHub Pages deploy
+      id-token: write   # для GitHub Pages deploy
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Checkout (main)
+        uses: actions/checkout@v4
+
+      - name: Download allure results artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results
+          path: .ci-allure
+
+      # Ветка, где мы храним только history для Allure (персистентность между прогонами)
+      - name: Fetch history branch (if exists)
+        run: |
+          set -euo pipefail
+          git fetch origin allure-history:allure-history || true
+
+      - name: Prepare previous history
+        run: |
+          set -euo pipefail
+
+          rm -rf .ci-history
+          mkdir -p .ci-history
+
+          if git show-ref --verify --quiet refs/heads/allure-history; then
+            echo "History branch exists, extracting history..."
+            git checkout allure-history -- history || true
+            if [ -d "history" ]; then
+              mv history .ci-history/history
+            fi
+            git checkout -- .
+          else
+            echo "No history branch yet."
+          fi
+
+      - name: Set up Java (for Allure CLI)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Allure CLI
+        run: |
+          set -euo pipefail
+          ALLURE_VERSION="2.27.0"
+          curl -fsSL -o allure.tgz "https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz"
+          tar -xzf allure.tgz
+          sudo mv "allure-${ALLURE_VERSION}" /opt/allure
+          sudo ln -sf /opt/allure/bin/allure /usr/local/bin/allure
+          allure --version
+
+      - name: Generate Allure reports (with history)
+        run: |
+          set -euo pipefail
+
+          mkdir -p public
+          suites=("all" "smoke" "regression" "negative")
+
+          # простая главная страница со ссылками на отчёты
+          cat > public/index.html <<'HTML'
+          <!doctype html>
+          <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>Allure Reports</title>
+            <style>
+              body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 40px; }
+              ul { line-height: 1.8; }
+              code { background: #f3f3f3; padding: 2px 6px; border-radius: 6px; }
+            </style>
+          </head>
+          <body>
+            <h1>Allure Reports</h1>
+            <p>Suites:</p>
+            <ul>
+              <li><a href="./all/">all</a></li>
+              <li><a href="./smoke/">smoke</a></li>
+              <li><a href="./regression/">regression</a></li>
+              <li><a href="./negative/">negative</a></li>
+            </ul>
+            <p><small>History is preserved via <code>allure-history</code> branch.</small></p>
+          </body>
+          </html>
+          HTML
+
+          rm -rf .ci-new-history
+          mkdir -p .ci-new-history/history
+
+          for s in "${suites[@]}"; do
+            results_dir=".ci-allure/allure-results-$s"
+            if [ ! -d "$results_dir" ]; then
+              echo "Skip $s: no results dir"
+              continue
+            fi
+
+            # Подмешиваем прошлую историю в allure-results/<history>
+            prev_hist=".ci-history/history/$s"
+            if [ -d "$prev_hist" ]; then
+              mkdir -p "$results_dir/history"
+              cp -r "$prev_hist/"* "$results_dir/history/" || true
+            fi
+
+            # Генерация отчёта
+            out_dir="public/$s"
+            rm -rf "$out_dir"
+            allure generate "$results_dir" -o "$out_dir" --clean
+
+            # Забираем новую историю для сохранения
+            if [ -d "$out_dir/history" ]; then
+              mkdir -p ".ci-new-history/history/$s"
+              cp -r "$out_dir/history/"* ".ci-new-history/history/$s/" || true
+            fi
+          done
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      # Сохраняем историю (history) в отдельную ветку allure-history
+      - name: Persist allure history branch
+        if: always()
+        run: |
+          set -euo pipefail
+
+          # создаём/обновляем ветку allure-history только с папкой history
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # создадим чистую временную рабочую директорию через orphan-ветку
+          git checkout --orphan tmp-history
+          git rm -rf . >/dev/null 2>&1 || true
+
+          mv .ci-new-history/history history
+
+          git add history
+          git commit -m "Update Allure history" || true
+
+          # пушим в allure-history
+          git branch -M allure-history
+          git push -f origin allure-history
