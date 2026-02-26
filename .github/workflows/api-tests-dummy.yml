@@ -1,5 +1,4 @@
-
-name: Run Docker Tests (Manual + Pages + History)
+name: Test Api Dummy (Manual + Pages + History)
 
 on:
   workflow_dispatch:
@@ -9,11 +8,7 @@ on:
         required: true
         default: "all"
         type: choice
-        options:
-          - all
-          - smoke
-          - regression
-          - negative
+        options: [ all, smoke, regression, negative ]
 
 jobs:
   run-tests:
@@ -32,21 +27,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Show Docker version
-        run: |
-          docker version
-          docker compose version
-
       - name: Build Docker image
-        run: docker compose build --no-cache
+        run: docker compose build
 
       - name: Run selected suite
-        run: |
-          docker compose run --rm ${{ github.event.inputs.suite }}
+        run: docker compose run --rm ${{ github.event.inputs.suite }}
 
-      - name: Fix permissions after Docker
-        run: |
-          sudo chown -R $USER:$USER .
+      - name: Fix permissions (only results)
+        run: sudo chown -R $USER:$USER allure-results || true
 
       - name: Install Java
         uses: actions/setup-java@v4
@@ -54,19 +42,25 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Cache Allure
+        uses: actions/cache@v4
+        with:
+          path: /opt/allure
+          key: allure-2.27.0
+
       - name: Install Allure CLI
         run: |
-          ALLURE_VERSION=2.27.0
-          curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
-          tar -xzf allure.tgz
-          sudo mv allure-${ALLURE_VERSION} /opt/allure
-          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+          if [ ! -x /opt/allure/bin/allure ]; then
+            ALLURE_VERSION=2.27.0
+            curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
+            tar -xzf allure.tgz
+            sudo mv allure-${ALLURE_VERSION} /opt/allure
+          fi
+          sudo ln -sf /opt/allure/bin/allure /usr/bin/allure
           allure --version
 
-      # 🔹 Получаем предыдущую history (если ветка существует)
       - name: Fetch history branch (if exists)
-        run: |
-          git fetch origin allure-history:allure-history || true
+        run: git fetch --depth=1 origin allure-history:allure-history || true
 
       - name: Restore previous history
         run: |
@@ -80,8 +74,7 @@ jobs:
           fi
 
       - name: Generate Allure HTML report
-        run: |
-          allure generate allure-results -o allure-report --clean
+        run: allure generate allure-results -o allure-report --clean
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4
@@ -92,10 +85,8 @@ jobs:
           path: allure-report
 
       - name: Deploy to GitHub Pages
-        id: deploy
         uses: actions/deploy-pages@v4
 
-      # 🔹 Сохраняем новую history в ветку allure-history
       - name: Persist Allure history
         run: |
           git config user.name "github-actions"
@@ -108,14 +99,16 @@ jobs:
           cp -r allure-report/history/* history/ || true
 
           git add history
-          git commit -m "Update Allure history"
+          git commit -m "Update Allure history" || true
           git branch -M allure-history
           git push -f origin allure-history
-#-
-#-
-#-
-# ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №4
-#name: Run Docker Tests (Manual + Pages + History)
+
+
+
+
+# Промежуточный вариант № 1
+# -
+#name: Test Api Dummy (Manual + Pages + History)
 #
 #on:
 #  workflow_dispatch:
@@ -136,7 +129,7 @@ jobs:
 #    runs-on: ubuntu-latest
 #
 #    permissions:
-#      contents: read
+#      contents: write
 #      pages: write
 #      id-token: write
 #
@@ -160,6 +153,10 @@ jobs:
 #        run: |
 #          docker compose run --rm ${{ github.event.inputs.suite }}
 #
+#      - name: Fix permissions after Docker
+#        run: |
+#          sudo chown -R $USER:$USER .
+#
 #      - name: Install Java
 #        uses: actions/setup-java@v4
 #        with:
@@ -175,20 +172,20 @@ jobs:
 #          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
 #          allure --version
 #
-#      # ⬇️ ВАЖНО — скачиваем предыдущий отчёт Pages
-#      - name: Download previous Pages artifact (if exists)
-#        continue-on-error: true
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: github-pages
-#          path: old-pages
-#
-#      # ⬇️ Если есть старая history — копируем её в allure-results
-#      - name: Restore Allure history
+#      # 🔹 Получаем предыдущую history (если ветка существует)
+#      - name: Fetch history branch (if exists)
 #        run: |
-#          if [ -d "old-pages/history" ]; then
-#            mkdir -p allure-results/history
-#            cp -r old-pages/history/* allure-results/history/ || true
+#          git fetch origin allure-history:allure-history || true
+#
+#      - name: Restore previous history
+#        run: |
+#          if git show-ref --verify --quiet refs/heads/allure-history; then
+#            git checkout allure-history -- history || true
+#            if [ -d "history" ]; then
+#              mkdir -p allure-results/history
+#              cp -r history/* allure-results/history/ || true
+#            fi
+#            git checkout -- .
 #          fi
 #
 #      - name: Generate Allure HTML report
@@ -204,201 +201,22 @@ jobs:
 #          path: allure-report
 #
 #      - name: Deploy to GitHub Pages
+#        id: deploy
 #        uses: actions/deploy-pages@v4
-#-
-#-
-#-
-# ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №3
-#name: Run Docker Tests (Manual + Pages)
 #
-#on:
-#  workflow_dispatch:
-#    inputs:
-#      suite:
-#        description: "Test suite to run"
-#        required: true
-#        default: "all"
-#        type: choice
-#        options:
-#          - all
-#          - smoke
-#          - regression
-#          - negative
-#
-#jobs:
-#  run-tests:
-#    runs-on: ubuntu-latest
-#
-#    permissions:
-#      contents: read
-#      pages: write
-#      id-token: write
-#
-#    env:
-#      BASE_URL: ${{ secrets.BASE_URL }}
-#      API_TOKEN: ${{ secrets.API_TOKEN }}
-#
-#    steps:
-#      - name: Checkout repo
-#        uses: actions/checkout@v4
-#
-#      - name: Show Docker version
+#      # 🔹 Сохраняем новую history в ветку allure-history
+#      - name: Persist Allure history
 #        run: |
-#          docker version
-#          docker compose version
+#          git config user.name "github-actions"
+#          git config user.email "actions@github.com"
 #
-#      - name: Build Docker image
-#        run: docker compose build --no-cache
+#          git checkout --orphan tmp-history
+#          git rm -rf . >/dev/null 2>&1 || true
 #
-#      - name: Run selected suite
-#        run: |
-#          docker compose run --rm ${{ github.event.inputs.suite }}
+#          mkdir history
+#          cp -r allure-report/history/* history/ || true
 #
-#      - name: Install Java
-#        uses: actions/setup-java@v4
-#        with:
-#          distribution: temurin
-#          java-version: "17"
-#
-#      - name: Install Allure CLI
-#        run: |
-#          ALLURE_VERSION=2.27.0
-#          curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
-#          tar -xzf allure.tgz
-#          sudo mv allure-${ALLURE_VERSION} /opt/allure
-#          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
-#          allure --version
-#
-#      - name: Generate Allure HTML report
-#        run: |
-#          allure generate allure-results -o allure-report --clean
-#
-#      # Готовим Pages
-#      - name: Setup GitHub Pages
-#        uses: actions/configure-pages@v4
-#
-#      - name: Upload Pages artifact
-#        uses: actions/upload-pages-artifact@v3
-#        with:
-#          path: allure-report
-#
-#      - name: Deploy to GitHub Pages
-#        uses: actions/deploy-pages@v4
-#-
-#-
-#-
-# ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №2
-#name: Run Docker Tests (Manual)
-#
-#on:
-#  workflow_dispatch:
-#    inputs:
-#      suite:
-#        description: "Test suite to run"
-#        required: true
-#        default: "all"
-#        type: choice
-#        options:
-#          - all
-#          - smoke
-#          - regression
-#          - negative
-#
-#jobs:
-#  run-tests:
-#    runs-on: ubuntu-latest
-#
-#    env:
-#      BASE_URL: ${{ secrets.BASE_URL }}
-#      API_TOKEN: ${{ secrets.API_TOKEN }}
-#
-#    steps:
-#      - name: Checkout repo
-#        uses: actions/checkout@v4
-#
-#      - name: Show Docker version
-#        run: |
-#          docker version
-#          docker compose version
-#
-#      - name: Build Docker image
-#        run: docker compose build --no-cache
-#
-#      - name: Run selected suite
-#        run: |
-#          docker compose run --rm ${{ github.event.inputs.suite }}
-#
-#      - name: Install Java
-#        uses: actions/setup-java@v4
-#        with:
-#          distribution: temurin
-#          java-version: "17"
-#
-#      - name: Install Allure CLI
-#        run: |
-#          ALLURE_VERSION=2.27.0
-#          curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
-#          tar -xzf allure.tgz
-#          sudo mv allure-${ALLURE_VERSION} /opt/allure
-#          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
-#          allure --version
-#
-#      - name: Generate Allure HTML report
-#        run: |
-#          allure generate allure-results -o allure-report --clean
-#
-#      - name: Upload Allure HTML report
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: allure-html-${{ github.event.inputs.suite }}
-#          path: allure-report
-#-
-#-
-#-
-# ПРОМЕЖУТОЧНЫЙ ВАРИАНТ №1
-#name: Run Docker Tests (Manual)
-#
-#on:
-#  workflow_dispatch:
-#    inputs:
-#      suite:
-#        description: "Test suite to run"
-#        required: true
-#        default: "all"
-#        type: choice
-#        options:
-#          - all
-#          - smoke
-#          - regression
-#          - negative
-#
-#jobs:
-#  run-tests:
-#    runs-on: ubuntu-latest
-#
-#    env:
-#      BASE_URL: ${{ secrets.BASE_URL }}
-#      API_TOKEN: ${{ secrets.API_TOKEN }}
-#
-#    steps:
-#      - name: Checkout repo
-#        uses: actions/checkout@v4
-#
-#      - name: Show Docker version
-#        run: |
-#          docker version
-#          docker compose version
-#
-#      - name: Build Docker image
-#        run: docker compose build --no-cache
-#
-#      - name: Run selected suite
-#        run: |
-#          docker compose run --rm ${{ github.event.inputs.suite }}
-#
-#      - name: Upload Allure raw results
-#        if: always()
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: allure-results-${{ github.event.inputs.suite }}
-#          path: allure-results
+#          git add history
+#          git commit -m "Update Allure history"
+#          git branch -M allure-history
+#          git push -f origin allure-history
