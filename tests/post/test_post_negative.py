@@ -67,16 +67,9 @@ class TestPostNegative(BaseTest):
 
     # --------------------------------------------------BODY_NOT_VALID--------------------------------------------------
     @allure.title("TestPostNegative --> BODY_NOT_VALID (create missing owner)")
-    def test_body_not_valid_create_missing_owner(self):
-        response_user = self.api_user.http_session.get(
-            url=self.api_user.endpoint.get_list_users(),
-            params={"page": 0, "limit": 1},
-            timeout=self.api_user.timeout
-        )
-        assert response_user.status_code == 200, response_user.text
-        user_id = response_user.json()["data"][0]["id"]
-
-        payload = PostPayload.create_post_payload(user_id=user_id)
+    def test_body_not_valid_create_missing_owner(self, created_user):
+        user = created_user()
+        payload = PostPayload.create_post_payload(user_id=str(user.id))
         payload.pop("owner", None)
 
         response_post = self.api_post.http_session.post(

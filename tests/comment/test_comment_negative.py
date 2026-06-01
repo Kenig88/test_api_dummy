@@ -48,7 +48,7 @@ class TestCommentNegative(BaseTest):
         assert response.json().get("error") == "PARAMS_NOT_VALID"
 
     @allure.title("TestCommentNegative --> bad pagination (400 or normalized 200)")
-    @pytest.mark.parametrize("params", [{"page": -1, "limit": 10}, {"page": 0, "limit": 000}])
+    @pytest.mark.parametrize("params", [{"page": -1, "limit": 10}, {"page": 0, "limit": 0}])
     def test_bad_pagination(self, params: dict):
         response = self.api_comment.http_session.get(
             url=self.api_comment.endpoint.get_list_comments(),
@@ -85,7 +85,7 @@ class TestCommentNegative(BaseTest):
             timeout=self.api_post.timeout
         )
         assert response_post.status_code == 200, response_post.text
-        post_id = response_user.json()["data"][0]["id"]
+        post_id = response_post.json()["data"][0]["id"]
 
         # работа с comment
         payload = CommentPayload.comment_create_payload(user_id=user_id, post_id=post_id)

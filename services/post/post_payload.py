@@ -1,4 +1,3 @@
-from attr.validators import max_len
 from faker import Faker
 
 fake = Faker()

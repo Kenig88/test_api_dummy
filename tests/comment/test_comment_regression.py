@@ -20,10 +20,12 @@ class TestCommentRegression(BaseTest):
     @allure.title("TestCommentRegression --> test_get_list_comments_by_user_id()")
     def test_get_list_comments_by_user_id(self, created_comment, created_user, created_post):
         user = created_user()
-        user_id = user.id
-        post = created_post()
-        post_id = post.id
-        comment_created = created_comment(user_id, post_id)
+        user_id = str(user.id)
+
+        post = created_post(user_id=user_id)
+        post_id = str(post.id)
+
+        comment_created = created_comment(user_id=user_id, post_id=post_id)
 
         page = 0
         limit = 50
@@ -47,10 +49,12 @@ class TestCommentRegression(BaseTest):
     @allure.title("TestCommentRegression --> test_get_list_comments_by_post_id()")
     def test_get_list_comments_by_post_id(self, created_comment, created_user, created_post):
         user = created_user()
-        user_id = user.id
-        post = created_post()
-        post_id = post.id
-        comment_created = created_comment(user_id, post_id)
+        user_id = str(user.id)
+
+        post = created_post(user_id=user_id)
+        post_id = str(post.id)
+
+        comment_created = created_comment(user_id=user_id, post_id=post_id)
 
         page = 0
         limit = 50

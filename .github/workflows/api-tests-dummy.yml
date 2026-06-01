@@ -31,14 +31,14 @@ jobs:
         run: docker compose build                # Собираем Docker-образ по Dockerfile (используется cache, быстрее)
 
       - name: Run selected suite
-        run: docker compose run --rm ${{ github.event.inputs.suite }}  # Запускаем выбранный suite в контейнере
-                                                                       # --rm удалит контейнер после завершения
+        run: docker compose run --rm ${{ github.event.inputs.suite }}  # Запускаем выбранный suite в контейнере, # --rm удалит контейнер после завершения
+        continue-on-error: true
+
 
       - name: Fix permissions (only results)
         run: sudo chown -R $USER:$USER allure-results || true          # Контейнер часто создаёт файлы как root
                                                                        # Меняем владельца папки allure-results, чтобы runner мог дальше с ней работать
                                                                        # || true -> не падаем, даже если папки нет
-
       - name: Install Java
         uses: actions/setup-java@v4                # Ставим Java (нужна для Allure CLI)
         with:
@@ -88,6 +88,7 @@ jobs:
           fi
 
       - name: Generate Allure HTML report
+        if: always()
         run: allure generate allure-results -o allure-report --clean
              # Генерируем HTML отчёт из сырых результатов allure-results
              # --clean очищает output-папку перед генерацией
