@@ -26,6 +26,10 @@
 
 - Allure-отчёты с прикреплением запросов и ответов
 
+- Логирование действий через pytest logging
+
+- Параллельный запуск тестов
+
 - Docker-исполнение тестов
 
 - CI-пайплайн с выбором test suite
@@ -39,13 +43,18 @@
 # <p align="center"> - Структура проекта - </p>
 
 ```text
-test_api_dummy/                 # Корневая папка проекта (репозиторий)
+test_api_dummy/                  # Корневая папка проекта (репозиторий)
 │
 ├── services/                    # Сервисный слой: всё, что связано с работой с API (клиенты, endpoints, модели, payloads)
 ├── tests/                       # Тесты pytest: test cases, фикстуры, маркеры smoke/regression/negative и т.д.
+│
+├── conftest.py                  # Фикстуры (driver, hooks, setup/teardown)
+├── pytest.ini                   # Конфигурация pytest
+├── requirements.txt             # Python-зависимости проекта (pytest, requests, allure, pydantic и т.п.)
+│
 ├── Dockerfile                   # Инструкция сборки Docker-образа с окружением и зависимостями для запуска тестов
 ├── docker-compose.yml           # Набор docker-compose сервисов для запуска разных suite (all/smoke/regression/negative)
-├── requirements.txt             # Python-зависимости проекта (pytest, requests, allure, pydantic и т.п.)
+│
 ├── .env.example                 # Пример файла переменных окружения (BASE_URL, API_TOKEN) — шаблон для локального запуска
 └── README.md                    # Описание проекта: как запускать локально/в CI, где смотреть Allure отчёт и историю
 ```
@@ -65,7 +74,29 @@ API_TOKEN=your_api_token_here
 
 ---
 
-# <p align="center"> 🐳 Локальный запуск тестов (через Docker). </p>
+# <p align="center"> 🧪 Локальный запуск без Docker. </p>
+
+Установка зависимостей:
+
+```bash
+pip install -r requirements.txt
+```
+
+Запуск тестов (пример):
+
+```bash
+pytest tests/post/test_post_smoke.py
+```
+
+Параллельный запуск (пример):
+
+```bash
+pytest tests/post/test_post_smoke.py -n 2
+```
+
+---
+
+# <p align="center"> 🐳 Локальный запуск тестов через Docker. </p>
 
 Запуск всех тестов:
 
@@ -183,6 +214,14 @@ Graphs → Trend
 🔹 Автоматическая очистка данных:
 
 Фикстуры создают и удаляют сущности автоматически, обеспечивая изоляцию тестов.
+
+🔹 Параллельный запуск:
+
+Поддержка pytest-xdist.
+
+🔹 Логирование:
+
+Логирование действий пользователя и навигации через pytest logging с выводом в консоль и файл.
 
 🔹 Безопасные Allure-прикрепления:
 

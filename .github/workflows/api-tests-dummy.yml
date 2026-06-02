@@ -8,7 +8,22 @@ on:
         required: true                           # Нельзя запустить без выбора
         default: "all"                           # Значение по умолчанию
         type: choice                             # Выпадающий список
-        options: [ all, smoke, regression, negative ]  # Варианты suite (совпадают с сервисами в docker-compose.yml)
+        options:                                 # Варианты suite (совпадают с сервисами в docker-compose.yml)
+        - all
+        - smoke
+        - regression
+        - negative
+
+      workers:
+        description: "xdist workers count"
+        required: true
+        default: "2"
+        type: choice
+        options:
+          - auto
+          - "2"
+          - "3"
+          - "4"
 
 jobs:
   run-tests:                                     # Имя job (задачи) внутри workflow
@@ -31,9 +46,10 @@ jobs:
         run: docker compose build                # Собираем Docker-образ по Dockerfile (используется cache, быстрее)
 
       - name: Run selected suite
-        run: docker compose run --rm ${{ github.event.inputs.suite }}  # Запускаем выбранный suite в контейнере, # --rm удалит контейнер после завершения
+        id: tests
+        run: docker compose run --rm -e PYTEST_WORKERS=${{ github.event.inputs.workers }} ${{ github.event.inputs.suite }}
         continue-on-error: true
-
+        # Запускаем выбранный suite в контейнере, # --rm удалит контейнер после завершения
 
       - name: Fix permissions (only results)
         run: sudo chown -R $USER:$USER allure-results || true          # Контейнер часто создаёт файлы как root
@@ -106,18 +122,20 @@ jobs:
 
       - name: Persist Allure history
         run: |
-          git config user.name "github-actions"     # Настраиваем git-автора коммитов
+          git config user.name "github-actions"
           git config user.email "actions@github.com"
 
-          git checkout --orphan tmp-history         # Создаём "чистую" ветку без истории (новый корень)
-          git rm -rf . >/dev/null 2>&1 || true      # Удаляем все файлы из индекса/рабочей папки (тихо)
+          git checkout --orphan tmp-history
+          git rm -rf . >/dev/null 2>&1 || true
 
-          mkdir history                              # Создаём папку history для хранения истории отчёта
+          mkdir history
           cp -r allure-report/history/* history/ || true
-                                                    # Копируем свежую историю из нового отчёта
 
-          git add history                            # Добавляем только папку history
+          git add history
           git commit -m "Update Allure history" || true
-                                                    # Коммитим (|| true чтобы не упасть, если "нет изменений")
-          git branch -M allure-history               # Переименовываем текущую ветку в allure-history
-          git push -f origin allure-history          # Форс-пушим ветку allure-history (обновляем историю на GitHub)
+          git branch -M allure-history
+          git push -f origin allure-history
+
+      - name: Fail workflow if tests failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1

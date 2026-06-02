@@ -12,11 +12,13 @@ RUN apk add --no-cache \
 
 WORKDIR /usr/workspace
 
-COPY requirements.txt /usr/workspace/requirements.txt
+COPY requirements.txt .
 
-RUN python -m pip install --no-cache-dir --upgrade pip \
- && python -m pip install --no-cache-dir -r /usr/workspace/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
 
-COPY . /usr/workspace
+COPY . .
 
-CMD ["pytest"]
+RUN mkdir -p logs allure-results
+
+CMD ["pytest", "-n", "2", "--alluredir=allure-results", "--clean-alluredir"]
