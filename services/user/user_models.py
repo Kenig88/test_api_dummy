@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-# Для create, get user by id, update user
 class UserResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -21,17 +20,16 @@ class UserList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
-    title: Optional[str] | None = None
+    title: str | None = None
     firstName: str = Field(min_length=2, max_length=50)
     lastName: str = Field(min_length=2, max_length=50)
-    picture: Optional[str] | None = None
+    picture: str | None = None
 
 
-# для get_list_users()
 class UserListResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    data: List[UserList]
+    data: list[UserList]
     total: int
     page: int
     limit: int

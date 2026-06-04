@@ -23,7 +23,7 @@ class TestPostRegression(BaseTest):
     @allure.title("TestPostRegression --> test_get_list_posts_by_user_id()")
     def test_get_list_posts_by_user_id(self, created_post, created_user):
         user = created_user()
-        user_id = user.id
+        user_id = str(user.id)
         post_created = created_post(user_id)
 
         page = 0
@@ -32,18 +32,16 @@ class TestPostRegression(BaseTest):
         response = self.api_post.get_list_posts_by_user_id(
             user_id=user_id,
             page=page,
-            limit=limit
+            limit=limit,
         )
         assert response is not None
-        assert all(p.owner.id == user_id for p in response.data)
         assert response.page == page
         assert response.limit == limit
         assert response.total is not None
         assert isinstance(response.data, list)
-        assert len(response.data) <= limit  # контракт пагинации
-        if response.data:
-            assert all(p.id is not None for p in response.data)
-            assert any(p.id == post_created.id for p in response.data)
+        assert len(response.data) <= limit
+        assert all(post.owner.id == user_id for post in response.data)
+        assert any(post.id == post_created.id for post in response.data)
 
     @allure.title("TestPostRegression --> test_get_list_posts()")
     def test_get_list_posts(self):
@@ -52,16 +50,16 @@ class TestPostRegression(BaseTest):
 
         response = self.api_post.get_list_posts(
             page=page,
-            limit=limit
+            limit=limit,
         )
         assert response is not None
         assert response.page == page
         assert response.limit == limit
         assert response.total is not None
         assert isinstance(response.data, list)
-        assert len(response.data) <= limit  # контракт пагинации
+        assert len(response.data) <= limit
         if response.data:
-            assert all(p.id is not None for p in response.data)
+            assert all(post.id is not None for post in response.data)
 
     @allure.title("TestPostRegression --> test_get_post_by_id()")
     def test_get_post_by_id(self, created_post):
@@ -85,13 +83,10 @@ class TestPostRegression(BaseTest):
         update_payload = PostPayload.update_post_payload()
         updated_post = self.api_post.update_post(post.id, update_payload)
 
-        # измененные поля сравниваю с update_payload
-        assert updated_post.text == update_payload['text']
-        assert updated_post.image == update_payload['image']
-        assert updated_post.likes == update_payload['likes']
-        assert updated_post.tags == update_payload['tags']
-
-        # неизмененные поля сравниваю с post
+        assert updated_post.text == update_payload["text"]
+        assert updated_post.image == update_payload["image"]
+        assert updated_post.likes == update_payload["likes"]
+        assert updated_post.tags == update_payload["tags"]
         assert updated_post.id == post.id
         assert updated_post.link == post.link
         assert updated_post.publishDate == post.publishDate

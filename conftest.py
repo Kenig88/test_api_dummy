@@ -1,34 +1,29 @@
-import os
 import logging
+import os
 from pathlib import Path
 
 import pytest
 import requests
 from dotenv import load_dotenv
 
-from services.user.user_endpoints import UserEndpoints
-from services.user.user_payloads import UserPayloads
-from services.user.api_user import ApiUser
-
-from services.post.post_endpoints import PostEndpoints
-from services.post.post_payload import PostPayload
-from services.post.api_post import ApiPost
-
+from services.comment.api_comment import ApiComment
 from services.comment.comment_endpoints import CommentEndpoints
 from services.comment.comment_payload import CommentPayload
-from services.comment.api_comment import ApiComment
+from services.post.api_post import ApiPost
+from services.post.post_endpoints import PostEndpoints
+from services.post.post_payload import PostPayload
+from services.user.api_user import ApiUser
+from services.user.user_endpoints import UserEndpoints
+from services.user.user_payloads import UserPayloads
 
 load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 LOGS_DIR = PROJECT_ROOT / "logs"
-
-DEFAULT_TIMEOUT: int = 15
+DEFAULT_TIMEOUT = 15
 
 logger = logging.getLogger("tests")
 
-
-# !pytest_configure(), pytest_runtest_makereport(), log_test_start_finish() -> хуки для логов!
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config):
@@ -37,9 +32,6 @@ def pytest_configure(config):
     worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
     config.option.log_file = str(LOGS_DIR / f"api-tests-{worker}.log")
 
-    # Убрал лишний технический шум из логов.
-    # Оставил понятные строки из services.api_base:
-    # GET/POST/PUT/DELETE url -> status_code
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("faker").setLevel(logging.WARNING)
 
@@ -66,9 +58,8 @@ def log_test_start_finish(request):
 
 
 def _get_env(name: str) -> str:
-    """Беру переменную из окружения и если её нет - падает с понятной ошибкой"""
     value = os.getenv(name)
-    assert value, f" Переменная {name} не задана в .env"
+    assert value, f"Переменная {name} не задана в окружении или .env"
     return value
 
 
@@ -88,17 +79,15 @@ def http_session(api_token: str) -> requests.Session:
     session.headers.update(
         {
             "app-id": api_token,
-            "Accept": "application/json",  # проверь в документации нужно ли
-            "Content-Type": "application/json"  # проверь в документации нужно ли
+            "Accept": "application/json",
+            "Content-Type": "application/json",
         }
     )
     yield session
     session.close()
 
 
-# ========================================================USER==========================================================
-# ======================================================================================================================
-# ========================================================USER==========================================================
+# ======================================================== USER ========================================================
 
 @pytest.fixture(scope="session")
 def user_endpoints(base_url: str) -> UserEndpoints:
@@ -115,29 +104,21 @@ def created_user(api_user: ApiUser):
     created_user_ids: list[str] = []
 
     def create_user(overrides: dict | None = None):
-
-        # 1) генерирую базовый payload
         payload = UserPayloads.create_user_payload()
         if overrides:
             payload.update(overrides)
 
-        # 3) создаю пользователя
         user = api_user.create_user(payload)
-
-        # 4) сохраняю id, чтобы потом удалить
         created_user_ids.append(str(user.id))
-        return user  # возвращаем модель пользователя
+        return user
 
     yield create_user
 
-    # cleanup: удаляю всех созданных пользователей
-    for uid in created_user_ids:
-        api_user.delete_user(uid, allow_not_found=True)
+    for user_id in created_user_ids:
+        api_user.delete_user(user_id, allow_not_found=True)
 
 
-# ========================================================POST==========================================================
-# ======================================================================================================================
-# ========================================================POST==========================================================
+# ======================================================== POST ========================================================
 
 @pytest.fixture(scope="session")
 def post_endpoints(base_url: str) -> PostEndpoints:
@@ -154,29 +135,24 @@ def created_post(api_post: ApiPost, created_user):
     created_post_ids: list[str] = []
 
     def create_post(user_id: str | None = None, overrides: dict | None = None):
-        # если владелец не задан — создаём нового пользователя
         if user_id is None:
-            user = created_user()
-            user_id = str(user.id)
+            user_id = str(created_user().id)
 
         payload = PostPayload.create_post_payload(user_id)
         if overrides:
             payload.update(overrides)
 
         post = api_post.create_post(user_id=user_id, payload=payload)
-
         created_post_ids.append(str(post.id))
         return post
 
     yield create_post
 
-    for pid in created_post_ids:
-        api_post.delete_post(pid, allow_not_found=True)
+    for post_id in created_post_ids:
+        api_post.delete_post(post_id, allow_not_found=True)
 
 
-# ======================================================COMMENT=========================================================
-# ======================================================================================================================
-# ======================================================COMMENT=========================================================
+# ====================================================== COMMENT =======================================================
 
 @pytest.fixture(scope="session")
 def comment_endpoints(base_url: str) -> CommentEndpoints:
@@ -192,19 +168,21 @@ def api_comment(http_session: requests.Session, comment_endpoints: CommentEndpoi
 def created_comment(api_comment: ApiComment, created_user, created_post):
     created_comment_ids: list[str] = []
 
-    def create_comment(user_id: str | None = None, post_id: str | None = None):
+    def create_comment(user_id: str | None = None, post_id: str | None = None, overrides: dict | None = None):
         if user_id is None:
             user_id = str(created_user().id)
         if post_id is None:
             post_id = str(created_post(user_id=user_id).id)
 
         payload = CommentPayload.comment_create_payload(user_id, post_id)
-        comment = api_comment.create_comment(user_id=user_id, post_id=post_id, payload=payload)
+        if overrides:
+            payload.update(overrides)
 
+        comment = api_comment.create_comment(user_id=user_id, post_id=post_id, payload=payload)
         created_comment_ids.append(str(comment.id))
         return comment
 
     yield create_comment
 
-    for cid in created_comment_ids:
-        api_comment.delete_comment(cid, allow_not_found=True)
+    for comment_id in created_comment_ids:
+        api_comment.delete_comment(comment_id, allow_not_found=True)

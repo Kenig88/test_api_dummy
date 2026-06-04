@@ -21,10 +21,8 @@ class TestCommentRegression(BaseTest):
     def test_get_list_comments_by_user_id(self, created_comment, created_user, created_post):
         user = created_user()
         user_id = str(user.id)
-
         post = created_post(user_id=user_id)
         post_id = str(post.id)
-
         comment_created = created_comment(user_id=user_id, post_id=post_id)
 
         page = 0
@@ -33,27 +31,23 @@ class TestCommentRegression(BaseTest):
         response = self.api_comment.get_list_comments_by_user_id(
             user_id=user_id,
             page=page,
-            limit=limit
+            limit=limit,
         )
         assert response is not None
-        assert all(c.owner.id == user_id for c in response.data)
         assert response.page == page
         assert response.limit == limit
         assert response.total is not None
         assert isinstance(response.data, list)
-        assert len(response.data) <= limit  # контракт пагинации
-        if response.data:
-            assert all(c.id is not None for c in response.data)
-            assert any(c.id == comment_created.id for c in response.data)
+        assert len(response.data) <= limit
+        assert all(comment.owner.id == user_id for comment in response.data)
+        assert any(comment.id == comment_created.id for comment in response.data)
 
     @allure.title("TestCommentRegression --> test_get_list_comments_by_post_id()")
     def test_get_list_comments_by_post_id(self, created_comment, created_user, created_post):
         user = created_user()
         user_id = str(user.id)
-
         post = created_post(user_id=user_id)
         post_id = str(post.id)
-
         comment_created = created_comment(user_id=user_id, post_id=post_id)
 
         page = 0
@@ -62,18 +56,16 @@ class TestCommentRegression(BaseTest):
         response = self.api_comment.get_list_comments_by_post_id(
             post_id=post_id,
             page=page,
-            limit=limit
+            limit=limit,
         )
         assert response is not None
-        assert all(c.post == post_id for c in response.data)
         assert response.page == page
         assert response.limit == limit
         assert response.total is not None
         assert isinstance(response.data, list)
-        assert len(response.data) <= limit  # контракт пагинации
-        if response.data:
-            assert all(c.id is not None for c in response.data)
-            assert any(c.id == comment_created.id for c in response.data)
+        assert len(response.data) <= limit
+        assert all(comment.post == post_id for comment in response.data)
+        assert any(comment.id == comment_created.id for comment in response.data)
 
     @allure.title("TestCommentRegression --> test_get_list_comments()")
     def test_get_list_comments(self):
@@ -82,16 +74,16 @@ class TestCommentRegression(BaseTest):
 
         response = self.api_comment.get_list_comments(
             page=page,
-            limit=limit
+            limit=limit,
         )
         assert response is not None
         assert response.page == page
         assert response.limit == limit
         assert response.total is not None
         assert isinstance(response.data, list)
-        assert len(response.data) <= limit  # контракт пагинации
+        assert len(response.data) <= limit
         if response.data:
-            assert all(c.id is not None for c in response.data)
+            assert all(comment.id is not None for comment in response.data)
 
     @allure.title("TestCommentRegression --> test_delete_comment()")
     def test_delete_comment(self, created_comment):

@@ -17,11 +17,10 @@ class TestPostSmoke(BaseTest):
             user_id = str(user.id)
             post = created_post(user_id=user_id)
             post_id = str(post.id)
-            # ниже проверяю данные из PostPayload
             assert post_id
             assert post.text
             assert post.image
-            assert isinstance(post.likes, int) # единственный int
+            assert isinstance(post.likes, int)
             assert post.tags
             assert post.owner.id == user_id
 
@@ -30,7 +29,7 @@ class TestPostSmoke(BaseTest):
             assert got.id == post_id
             assert got.text == post.text
             assert got.image == post.image
-            assert isinstance(got.likes, int) # единственный int
+            assert isinstance(got.likes, int)
             assert got.tags == post.tags
             assert got.owner.id == user_id
 
@@ -40,14 +39,12 @@ class TestPostSmoke(BaseTest):
             assert updated_post.id == post_id
 
             for field in ["text", "image", "likes", "tags"]:
-                if field in update_payload:
-                    assert getattr(updated_post, field) == update_payload[field]
+                assert getattr(updated_post, field) == update_payload[field]
 
         with allure.step("test_post_smoke --> GET == after update /post/{post_id}"):
             got2 = self.api_post.get_post_by_id(post_id)
             for field in ["text", "image", "likes", "tags"]:
-                if field in update_payload:
-                    assert getattr(got2, field) == update_payload[field]
+                assert getattr(got2, field) == update_payload[field]
 
         with allure.step("test_post_smoke --> DELETE == /post/{post_id}"):
             deleted_post = self.api_post.delete_post(post_id)

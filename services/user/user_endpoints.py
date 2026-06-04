@@ -1,6 +1,6 @@
 class UserEndpoints:
     def __init__(self, base_url: str):
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
 
     def create_user(self) -> str:
         return f"{self.base_url}/user/create"

@@ -1,6 +1,6 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class Owner(BaseModel):
@@ -11,14 +11,13 @@ class Owner(BaseModel):
     lastName: str
 
 
-# для create, get_post_by_post_id, update
 class PostResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
     image: str
     likes: int
-    link: Optional[str] | None = None
+    link: str | None = None
     tags: list[str]
     text: str
     publishDate: datetime
@@ -26,7 +25,6 @@ class PostResponseModel(BaseModel):
     owner: Owner
 
 
-# для get_list_posts, get_list_posts_by_user_id
 class PostListResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -36,7 +34,6 @@ class PostListResponseModel(BaseModel):
     limit: int
 
 
-# для delete
 class PostDeleteResponseModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

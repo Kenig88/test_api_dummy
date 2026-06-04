@@ -10,7 +10,6 @@ from services.comment.comment_payload import CommentPayload
 @pytest.mark.negative
 class TestCommentNegative(BaseTest):
 
-    # -------------------------------------------------APP_ID_MISSING---------------------------------------------------
     @allure.title("TestCommentNegative --> APP_ID_MISSING")
     def test_app_id_missing(self):
         response = self.api_comment.send_request(
@@ -22,7 +21,6 @@ class TestCommentNegative(BaseTest):
         assert response.status_code in (401, 403), response.text
         assert response.json().get("error") == "APP_ID_MISSING"
 
-    # -------------------------------------------------APP_ID_NOT_EXIST-------------------------------------------------
     @allure.title("TestCommentNegative --> APP_ID_NOT_EXIST")
     def test_app_id_not_exist(self):
         response = self.api_comment.send_request(
@@ -35,7 +33,6 @@ class TestCommentNegative(BaseTest):
         assert response.status_code in (401, 403), response.text
         assert response.json().get("error") == "APP_ID_NOT_EXIST"
 
-    # -------------------------------------------------PARAMS_NOT_VALID-------------------------------------------------
     @allure.title("TestCommentNegative --> PARAMS_NOT_VALID (bad id)")
     @pytest.mark.parametrize("bad_comment_id", ["123", "not-an-id", "!!!!!!!!"])
     def test_params_not_valid_by_id(self, bad_comment_id: str):
@@ -64,30 +61,12 @@ class TestCommentNegative(BaseTest):
             assert isinstance(body.get("limit"), int)
             assert len(body["data"]) <= body["limit"]
 
-    # --------------------------------------------------BODY_NOT_VALID--------------------------------------------------
     @allure.title("TestCommentNegative --> BODY_NOT_VALID (create missing required field)")
     @pytest.mark.parametrize("missing_key", ["owner", "post"])
-    def test_body_not_valid_create_missing_required(self, missing_key: str):
-        # user_id
-        response_user = self.api_user.send_request(
-            method="GET",
-            url=self.api_user.endpoint.get_list_users(),
-            params={"page": 0, "limit": 1},
-        )
-        assert response_user.status_code == 200, response_user.text
-        user_id = response_user.json()["data"][0]["id"]
-
-        # post_id
-        response_post = self.api_post.send_request(
-            method="GET",
-            url=self.api_post.endpoint.get_list_posts(),
-            params={"page": 0, "limit": 1},
-        )
-        assert response_post.status_code == 200, response_post.text
-        post_id = response_post.json()["data"][0]["id"]
-
-        # работа с comment
-        payload = CommentPayload.comment_create_payload(user_id=user_id, post_id=post_id)
+    def test_body_not_valid_create_missing_required(self, missing_key: str, created_user, created_post):
+        user = created_user()
+        post = created_post(user_id=str(user.id))
+        payload = CommentPayload.comment_create_payload(user_id=str(user.id), post_id=str(post.id))
         payload.pop(missing_key, None)
 
         response_comment = self.api_comment.send_request(
@@ -98,7 +77,6 @@ class TestCommentNegative(BaseTest):
         assert response_comment.status_code == 400, response_comment.text
         assert response_comment.json().get("error") == "BODY_NOT_VALID"
 
-    # -----------------------------------------------RESOURCE_NOT_FOUND-------------------------------------------------
     @allure.title("TestCommentNegative --> RESOURCE_NOT_FOUND (valid id, not exists)")
     def test_resource_not_found_by_id(self):
         response = self.api_comment.send_request(
@@ -108,7 +86,6 @@ class TestCommentNegative(BaseTest):
         assert response.status_code == 404, response.text
         assert response.json().get("error") == "RESOURCE_NOT_FOUND"
 
-    # -------------------------------------------------PATH_NOT_FOUND---------------------------------------------------
     @allure.title("TestCommentNegative --> PATH_NOT_FOUND")
     def test_path_not_found(self):
         list_url = self.api_comment.endpoint.get_list_comments()

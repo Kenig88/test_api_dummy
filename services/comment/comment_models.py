@@ -1,5 +1,6 @@
-from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class Owner(BaseModel):
@@ -10,7 +11,6 @@ class Owner(BaseModel):
     lastName: str
 
 
-# для create
 class CommentResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -21,7 +21,6 @@ class CommentResponseModel(BaseModel):
     publishDate: datetime
 
 
-# для get_list_by_user_id, get_list_by_post_id, get_list
 class CommentsListResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -31,7 +30,6 @@ class CommentsListResponseModel(BaseModel):
     limit: int
 
 
-# для delete
 class CommentDeleteResponseModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

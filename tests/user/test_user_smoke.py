@@ -15,7 +15,6 @@ class TestUserSmoke(BaseTest):
         with allure.step("test_user_smoke --> POST == /user/create"):
             user = created_user()
             user_id = str(user.id)
-            # ниже проверяю данные из UserPayload
             assert user_id
             assert user.email
             assert user.firstName
@@ -37,24 +36,13 @@ class TestUserSmoke(BaseTest):
             updated_user = self.api_user.update_user(user_id, update_payload)
             assert updated_user.id == user_id
 
-            # это тоже самое что if внизу, только код короче и удобнее
             for field in ["firstName", "lastName", "phone"]:
-                if field in update_payload:
-                    assert getattr(updated_user, field) == update_payload[field]
-
-            # if "firstName" in update_payload:
-            #     assert updated_user.firstName == update_payload["firstName"]
-            # if "lastName" in update_payload:
-            #     assert updated_user.lastName == update_payload["lastName"]
-            # if "phone" in update_payload:
-            #     assert updated_user.phone == update_payload["phone"]
+                assert getattr(updated_user, field) == update_payload[field]
 
         with allure.step("test_user_smoke --> GET == after update /user/{user_id}"):
             got2 = self.api_user.get_user_by_id(user_id)
-
             for field in ["firstName", "lastName", "phone"]:
-                if field in update_payload:
-                    assert getattr(got2, field) == update_payload[field]
+                assert getattr(got2, field) == update_payload[field]
 
         with allure.step("test_user_smoke --> DELETE == /user/{user_id}"):
             deleted_user = self.api_user.delete_user(user_id)
