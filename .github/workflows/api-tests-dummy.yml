@@ -31,38 +31,42 @@ jobs:
     runs-on: ubuntu-latest
 
     # Права нужны для публикации Allure-отчёта на GitHub Pages
-    # и сохранения истории отчётов в отдельную ветку
+    # и сохранения истории отчётов в отдельную ветку allure-history.
     permissions:
       contents: write
       pages: write
       id-token: write
 
-    # Секреты передаются в контейнер как переменные окружения
+    # Секреты из GitHub Secrets передаются в workflow как переменные окружения.
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
       API_TOKEN: ${{ secrets.API_TOKEN }}
 
     steps:
+      # Скачивает код репозитория внутрь GitHub Actions runner.
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Собираем Docker-образ перед запуском тестов
+      # Собирает Docker-образ по Dockerfile и docker-compose.yml.
       - name: Build Docker image
         run: docker compose build
 
-      # Запускаем выбранный suite и не останавливаем workflow сразу при падении тестов,
-      # чтобы успеть сохранить логи и сгенерировать Allure-отчёт
+      # Запускает выбранный test suite: all, smoke, regression или negative.
+      # continue-on-error нужен, чтобы workflow не остановился сразу после падения тестов,
+      # а успел сохранить логи и сгенерировать Allure-отчёт.
       - name: Run selected test suite
         id: tests
         continue-on-error: true
         run: docker compose run --rm -e PYTEST_WORKERS=${{ github.event.inputs.workers }} ${{ github.event.inputs.suite }}
 
-      # После Docker файлы могут принадлежать root, поэтому меняем владельца
+      # Исправляет права на файлы, созданные внутри Docker-контейнера.
+      # Без этого GitHub Actions может не иметь доступа к allure-results и logs.
       - name: Fix artifact permissions
         if: always()
         run: sudo chown -R $USER:$USER allure-results logs || true
 
-      # Загружаем pytest-логи как artifact, чтобы их можно было скачать из GitHub Actions
+      # Загружает pytest-логи как artifact.
+      # Их можно скачать из GitHub Actions после завершения workflow.
       - name: Upload test logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -72,20 +76,23 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      # Java нужна для работы Allure CLI
+      # Устанавливает Java, потому что Allure CLI работает через Java.
       - name: Install Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # Кэшируем Allure CLI, чтобы не скачивать его при каждом запуске
+      # Кэширует Allure CLI в /opt/allure.
+      # Если кэш найден, Allure не придётся скачивать заново при каждом запуске.
       - name: Cache Allure CLI
         uses: actions/cache@v4
         with:
           path: /opt/allure
           key: allure-2.27.0
 
+      # Устанавливает Allure CLI, если он не был найден в кэше.
+      # После установки создаёт ссылку /usr/bin/allure, чтобы команда allure была доступна глобально.
       - name: Install Allure CLI
         run: |
           if [ ! -x /opt/allure/bin/allure ]; then
@@ -98,12 +105,13 @@ jobs:
           sudo ln -sf /opt/allure/bin/allure /usr/bin/allure
           allure --version
 
-      # Получаем ветку с предыдущей Allure history, если она уже существует
+      # Пытается получить ветку allure-history из репозитория.
+      # В ней хранится история прошлых Allure-отчётов для графиков и трендов.
       - name: Fetch Allure history branch
         run: git fetch --depth=1 origin allure-history:allure-history || true
 
-      # Подкладываем старую history в allure-results,
-      # чтобы новый отчёт продолжал тренды прошлых запусков
+      # Восстанавливает старую Allure history и кладёт её в allure-results/history.
+      # Благодаря этому новый Allure-отчёт продолжает показывать историю прошлых запусков.
       - name: Restore Allure history
         run: |
           if git show-ref --verify --quiet refs/heads/allure-history; then
@@ -117,24 +125,29 @@ jobs:
             git checkout -- .
           fi
 
-      # Генерируем HTML-отчёт Allure даже если тесты упали
+      # Генерирует HTML-отчёт Allure из сырых результатов pytest в allure-results.
+      # if: always() нужен, чтобы отчёт создавался даже если тесты упали.
       - name: Generate Allure report
         if: always()
         run: allure generate allure-results -o allure-report --clean
 
-      # Готовим публикацию Allure-отчёта на GitHub Pages
+      # Подготавливает GitHub Pages для публикации Allure HTML-отчёта.
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v4
 
+      # Загружает папку allure-report как artifact для GitHub Pages.
+      # Именно эта папка потом будет опубликована как сайт.
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: allure-report
 
+      # Публикует Allure HTML-отчёт на GitHub Pages.
       - name: Deploy Allure report to GitHub Pages
         uses: actions/deploy-pages@v4
 
-      # Сохраняем новую Allure history в отдельную ветку для следующих запусков
+      # Сохраняет новую папку allure-report/history в отдельную ветку allure-history.
+      # Эта ветка нужна, чтобы в следующих запусках Allure показывал историю и тренды.
       - name: Persist Allure history
         run: |
           git config user.name "github-actions"
@@ -151,7 +164,8 @@ jobs:
           git branch -M allure-history
           git push -f origin allure-history
 
-      # В конце возвращаем workflow в failed-статус, если тесты реально упали
+      # Возвращает workflow в failed-статус, если тесты реально упали.
+      # Это нужно, потому что шаг Run selected test suite использует continue-on-error: true.
       - name: Fail workflow if tests failed
         if: steps.tests.outcome == 'failure'
         run: exit 1
