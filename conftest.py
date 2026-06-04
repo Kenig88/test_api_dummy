@@ -100,17 +100,17 @@ def http_session(api_token: str) -> requests.Session:
 # ======================================================================================================================
 # ========================================================USER==========================================================
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def user_endpoints(base_url: str) -> UserEndpoints:
     return UserEndpoints(base_url)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def api_user(http_session: requests.Session, user_endpoints: UserEndpoints) -> ApiUser:
     return ApiUser(http_session=http_session, endpoints=user_endpoints, timeout=DEFAULT_TIMEOUT)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def created_user(api_user: ApiUser):
     created_user_ids: list[str] = []
 
@@ -139,17 +139,17 @@ def created_user(api_user: ApiUser):
 # ======================================================================================================================
 # ========================================================POST==========================================================
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def post_endpoints(base_url: str) -> PostEndpoints:
     return PostEndpoints(base_url)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def api_post(http_session: requests.Session, post_endpoints: PostEndpoints) -> ApiPost:
     return ApiPost(http_session=http_session, endpoints=post_endpoints, timeout=DEFAULT_TIMEOUT)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def created_post(api_post: ApiPost, created_user):
     created_post_ids: list[str] = []
 
@@ -178,17 +178,17 @@ def created_post(api_post: ApiPost, created_user):
 # ======================================================================================================================
 # ======================================================COMMENT=========================================================
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def comment_endpoints(base_url: str) -> CommentEndpoints:
     return CommentEndpoints(base_url)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def api_comment(http_session: requests.Session, comment_endpoints: CommentEndpoints) -> ApiComment:
     return ApiComment(http_session=http_session, endpoints=comment_endpoints, timeout=DEFAULT_TIMEOUT)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def created_comment(api_comment: ApiComment, created_user, created_post):
     created_comment_ids: list[str] = []
 
@@ -207,4 +207,4 @@ def created_comment(api_comment: ApiComment, created_user, created_post):
     yield create_comment
 
     for cid in created_comment_ids:
-        api_comment.delete_comment(cid)
+        api_comment.delete_comment(cid, allow_not_found=True)
