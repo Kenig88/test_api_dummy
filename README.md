@@ -48,7 +48,7 @@ test_api_dummy/                  # Корневая папка проекта (�
 ├── services/                    # Сервисный слой: всё, что связано с работой с API (клиенты, endpoints, модели, payloads)
 ├── tests/                       # Тесты pytest: test cases, фикстуры, маркеры smoke/regression/negative и т.д.
 │
-├── conftest.py                  # Фикстуры (driver, hooks, setup/teardown)
+├── conftest.py                  # Фикстуры (hooks, setup/teardown)
 ├── pytest.ini                   # Конфигурация pytest
 ├── requirements.txt             # Python-зависимости проекта (pytest, requests, allure, pydantic и т.п.)
 │
@@ -98,6 +98,12 @@ pytest tests/post/test_post_smoke.py -n 2
 
 # <p align="center"> 🐳 Локальный запуск тестов через Docker. </p>
 
+Создание окружения Docker image перед тестами:
+
+```bash
+docker compose build
+```
+
 Запуск всех тестов:
 
 ```bash
@@ -116,22 +122,22 @@ docker compose run --rm negative
 
 # <p align="center"> 📊 Генерация Allure-отчёта локально. </p>
 
-После выполнения тестов:
+Локальный запуск тестов с созданием Allure-отчёта:
+
+```bash
+pytest --alluredir=allure-results
+```
+
+Для генерации статического отчёта:
 
 ```bash
 allure generate allure-results -o allure-report --clean
 ```
 
-Запустите локальный сервер:
+Для просмотра отчёта локально:
 
 ```bash
-python -m http.server 8080
-```
-
-Откройте в браузере:
-
-```bash
-http://localhost:8080
+allure serve allure-results
 ```
 
 ---
@@ -158,11 +164,12 @@ http://localhost:8080
 
 # <p align="center">  ▶ Как запустить CI. </p>
 
+0. Перейдите в GitHub -> Settings -> Secrets and variables -> Actions и добавьте секреты "API_TOKEN" и "BASE_URL" 
 1. Перейдите в GitHub → Actions
 2. Выберите workflow:
 
-```bash
-Test Api Dummy (Manual + Pages + History)
+```text
+API Tests
 ```
 
 3. Нажмите Run workflow
@@ -221,7 +228,7 @@ Graphs → Trend
 
 🔹 Логирование:
 
-Логирование действий пользователя и навигации через pytest logging с выводом в консоль и файл.
+Логирование действий пользователя и навигации через pytest logging с выводом в файл.
 
 🔹 Безопасные Allure-прикрепления:
 

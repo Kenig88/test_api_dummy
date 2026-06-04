@@ -3,14 +3,13 @@ import requests
 from typing import Optional
 
 from services.api_base import ApiBase
-from utils.helper import Helper
 from services.user.user_endpoints import UserEndpoints
 from services.user.user_payloads import UserPayloads
 from services.user.user_models import UserResponseModel, UserListResponseModel, UserDeleteResponseModel, \
     UserAfterDeleteResponseModel
 
 
-class ApiUser(ApiBase, Helper):
+class ApiUser(ApiBase):
     def __init__(self, http_session: requests.Session, endpoints: UserEndpoints, timeout: int = 15):
         super().__init__(http_session=http_session, timeout=timeout)
         self.endpoint = endpoints

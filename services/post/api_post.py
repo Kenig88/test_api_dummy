@@ -3,14 +3,14 @@ import requests
 from typing import Optional
 
 from services.api_base import ApiBase
-from utils.helper import Helper
+
 from services.post.post_endpoints import PostEndpoints
 from services.post.post_payload import PostPayload
 from services.post.post_models import PostResponseModel, PostListResponseModel, PostDeleteResponseModel, \
     PostAfterDeleteResponseModel
 
 
-class ApiPost(ApiBase, Helper):
+class ApiPost(ApiBase):
     def __init__(self, http_session: requests.Session, endpoints: PostEndpoints, timeout: int = 15):
         super().__init__(http_session=http_session, timeout=timeout)
         self.endpoint = endpoints

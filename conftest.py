@@ -1,4 +1,7 @@
 import os
+import logging
+from pathlib import Path
+
 import pytest
 import requests
 from dotenv import load_dotenv
@@ -16,7 +19,50 @@ from services.comment.comment_payload import CommentPayload
 from services.comment.api_comment import ApiComment
 
 load_dotenv()
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+LOGS_DIR = PROJECT_ROOT / "logs"
+
 DEFAULT_TIMEOUT: int = 15
+
+logger = logging.getLogger("tests")
+
+
+# !pytest_configure(), pytest_runtest_makereport(), log_test_start_finish() -> хуки для логов!
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_configure(config):
+    LOGS_DIR.mkdir(exist_ok=True)
+
+    worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    config.option.log_file = str(LOGS_DIR / f"api-tests-{worker}.log")
+
+    # Убрал лишний технический шум из логов.
+    # Оставил понятные строки из services.api_base:
+    # GET/POST/PUT/DELETE url -> status_code
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("faker").setLevel(logging.WARNING)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+
+    if report.when == "call":
+        setattr(item, "_test_outcome", report.outcome.upper())
+
+
+@pytest.fixture(autouse=True)
+def log_test_start_finish(request):
+    worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    test_name = request.node.nodeid
+
+    logger.info("[%s] START TEST: %s", worker, test_name)
+    yield
+
+    result = getattr(request.node, "_test_outcome", "FINISHED")
+    logger.info("[%s] END TEST: %s -> %s", worker, test_name, result)
 
 
 def _get_env(name: str) -> str:
@@ -54,17 +100,17 @@ def http_session(api_token: str) -> requests.Session:
 # ======================================================================================================================
 # ========================================================USER==========================================================
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def user_endpoints(base_url: str) -> UserEndpoints:
     return UserEndpoints(base_url)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def api_user(http_session: requests.Session, user_endpoints: UserEndpoints) -> ApiUser:
     return ApiUser(http_session=http_session, endpoints=user_endpoints, timeout=DEFAULT_TIMEOUT)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def created_user(api_user: ApiUser):
     created_user_ids: list[str] = []
 
@@ -93,17 +139,17 @@ def created_user(api_user: ApiUser):
 # ======================================================================================================================
 # ========================================================POST==========================================================
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def post_endpoints(base_url: str) -> PostEndpoints:
     return PostEndpoints(base_url)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def api_post(http_session: requests.Session, post_endpoints: PostEndpoints) -> ApiPost:
     return ApiPost(http_session=http_session, endpoints=post_endpoints, timeout=DEFAULT_TIMEOUT)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def created_post(api_post: ApiPost, created_user):
     created_post_ids: list[str] = []
 
@@ -132,17 +178,17 @@ def created_post(api_post: ApiPost, created_user):
 # ======================================================================================================================
 # ======================================================COMMENT=========================================================
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def comment_endpoints(base_url: str) -> CommentEndpoints:
     return CommentEndpoints(base_url)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def api_comment(http_session: requests.Session, comment_endpoints: CommentEndpoints) -> ApiComment:
     return ApiComment(http_session=http_session, endpoints=comment_endpoints, timeout=DEFAULT_TIMEOUT)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def created_comment(api_comment: ApiComment, created_user, created_post):
     created_comment_ids: list[str] = []
 

@@ -1,18 +1,18 @@
-name: Test Api Dummy (Manual + Pages + History)  # Название workflow (так будет отображаться во вкладке Actions)
+name: API Tests
 
 on:
-  workflow_dispatch:                             # Запуск ТОЛЬКО вручную (кнопка "Run workflow" в GitHub Actions)
+  workflow_dispatch:
     inputs:
-      suite:                                     # Параметр, который ты выбираешь при ручном запуске
-        description: "Test suite to run"         # Подсказка в UI
-        required: true                           # Нельзя запустить без выбора
-        default: "all"                           # Значение по умолчанию
-        type: choice                             # Выпадающий список
-        options:                                 # Варианты suite (совпадают с сервисами в docker-compose.yml)
-        - all
-        - smoke
-        - regression
-        - negative
+      suite:
+        description: "Test suite to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - smoke
+          - regression
+          - negative
 
       workers:
         description: "xdist workers count"
@@ -26,100 +26,115 @@ on:
           - "4"
 
 jobs:
-  run-tests:                                     # Имя job (задачи) внутри workflow
-    runs-on: ubuntu-latest                       # На какой ОС крутится job (виртуалка GitHub)
+  run-tests:
+    name: Run API tests
+    runs-on: ubuntu-latest
 
-    permissions:                                 # Права, которые нужны workflow
-      contents: write                            # Нужно, чтобы пушить ветку allure-history (с историей)
-      pages: write                               # Нужно, чтобы деплоить на GitHub Pages
-      id-token: write                            # Нужно для deploy-pages (OIDC токен)
+    # Права нужны для публикации Allure-отчёта на GitHub Pages
+    # и сохранения истории отчётов в отдельную ветку
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
 
-    env:                                         # Переменные окружения для всех шагов job
-      BASE_URL: ${{ secrets.BASE_URL }}          # Берём BASE_URL из GitHub Secrets
-      API_TOKEN: ${{ secrets.API_TOKEN }}        # Берём API_TOKEN из GitHub Secrets
+    # Секреты передаются в контейнер как переменные окружения
+    env:
+      BASE_URL: ${{ secrets.BASE_URL }}
+      API_TOKEN: ${{ secrets.API_TOKEN }}
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4                # Скачиваем код репозитория на runner
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      # Собираем Docker-образ перед запуском тестов
       - name: Build Docker image
-        run: docker compose build                # Собираем Docker-образ по Dockerfile (используется cache, быстрее)
+        run: docker compose build
 
-      - name: Run selected suite
+      # Запускаем выбранный suite и не останавливаем workflow сразу при падении тестов,
+      # чтобы успеть сохранить логи и сгенерировать Allure-отчёт
+      - name: Run selected test suite
         id: tests
-        run: docker compose run --rm -e PYTEST_WORKERS=${{ github.event.inputs.workers }} ${{ github.event.inputs.suite }}
         continue-on-error: true
-        # Запускаем выбранный suite в контейнере, # --rm удалит контейнер после завершения
+        run: docker compose run --rm -e PYTEST_WORKERS=${{ github.event.inputs.workers }} ${{ github.event.inputs.suite }}
 
-      - name: Fix permissions (only results)
-        run: sudo chown -R $USER:$USER allure-results || true          # Контейнер часто создаёт файлы как root
-                                                                       # Меняем владельца папки allure-results, чтобы runner мог дальше с ней работать
-                                                                       # || true -> не падаем, даже если папки нет
+      # После Docker файлы могут принадлежать root, поэтому меняем владельца
+      - name: Fix artifact permissions
+        if: always()
+        run: sudo chown -R $USER:$USER allure-results logs || true
+
+      # Загружаем pytest-логи как artifact, чтобы их можно было скачать из GitHub Actions
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: logs/
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Java нужна для работы Allure CLI
       - name: Install Java
-        uses: actions/setup-java@v4                # Ставим Java (нужна для Allure CLI)
+        uses: actions/setup-java@v4
         with:
-          distribution: temurin                    # Дистрибутив Java
-          java-version: "17"                       # Версия Java
+          distribution: temurin
+          java-version: "17"
 
-      - name: Cache Allure
-        uses: actions/cache@v4                     # Кэшируем Allure CLI, чтобы не скачивать каждый раз
+      # Кэшируем Allure CLI, чтобы не скачивать его при каждом запуске
+      - name: Cache Allure CLI
+        uses: actions/cache@v4
         with:
-          path: /opt/allure                        # Куда устанавливаем Allure (эту папку кэшируем)
-          key: allure-2.27.0                       # Ключ кэша (если поменяешь версию — поменяй ключ)
+          path: /opt/allure
+          key: allure-2.27.0
 
       - name: Install Allure CLI
-        run: |                                     # Многострочный bash-скрипт
-          if [ ! -x /opt/allure/bin/allure ]; then  # Если Allure ещё не установлен (или кэш пустой)
-            ALLURE_VERSION=2.27.0                   # Версия Allure
+        run: |
+          if [ ! -x /opt/allure/bin/allure ]; then
+            ALLURE_VERSION=2.27.0
             curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz
-                                                    # Скачиваем архив Allure
-            tar -xzf allure.tgz                     # Распаковываем
-            sudo mv allure-${ALLURE_VERSION} /opt/allure  # Кладём в /opt/allure (кэшируемую папку)
+            tar -xzf allure.tgz
+            sudo mv allure-${ALLURE_VERSION} /opt/allure
           fi
-          sudo ln -sf /opt/allure/bin/allure /usr/bin/allure  # Делаем команду `allure` доступной в PATH
-          allure --version                                  # Печатаем версию (полезно для логов)
 
-      - name: Fetch history branch (if exists)
+          sudo ln -sf /opt/allure/bin/allure /usr/bin/allure
+          allure --version
+
+      # Получаем ветку с предыдущей Allure history, если она уже существует
+      - name: Fetch Allure history branch
         run: git fetch --depth=1 origin allure-history:allure-history || true
-             # Пытаемся скачать ветку allure-history (где хранится история отчётов)
-             # --depth=1 -> быстро, берём только последний коммит
-             # || true -> если ветки ещё нет (первый запуск), workflow не падает
 
-      - name: Restore previous history
+      # Подкладываем старую history в allure-results,
+      # чтобы новый отчёт продолжал тренды прошлых запусков
+      - name: Restore Allure history
         run: |
           if git show-ref --verify --quiet refs/heads/allure-history; then
-            # Если ветка allure-history реально существует локально:
             git checkout allure-history -- history || true
-            # Забираем из неё папку history (Allure trend/history хранится тут)
 
             if [ -d "history" ]; then
-              # Если папка history есть — копируем её в allure-results/history
-              # Это нужно, чтобы новый отчёт "продолжил" историю прошлых прогонов
               mkdir -p allure-results/history
               cp -r history/* allure-results/history/ || true
             fi
 
             git checkout -- .
-            # Возвращаем рабочую директорию обратно к состоянию основной ветки (чтобы ничего не "прилипло")
           fi
 
-      - name: Generate Allure HTML report
+      # Генерируем HTML-отчёт Allure даже если тесты упали
+      - name: Generate Allure report
         if: always()
         run: allure generate allure-results -o allure-report --clean
-             # Генерируем HTML отчёт из сырых результатов allure-results
-             # --clean очищает output-папку перед генерацией
 
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v4            # Подготовка окружения для GitHub Pages
+      # Готовим публикацию Allure-отчёта на GitHub Pages
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v4
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3      # Упаковываем папку с HTML отчётом для деплоя
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: allure-report                        # Именно этот каталог будет опубликован
+          path: allure-report
 
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4               # Деплой на GitHub Pages (получишь ссылку на отчёт)
+      - name: Deploy Allure report to GitHub Pages
+        uses: actions/deploy-pages@v4
 
+      # Сохраняем новую Allure history в отдельную ветку для следующих запусков
       - name: Persist Allure history
         run: |
           git config user.name "github-actions"
@@ -136,6 +151,7 @@ jobs:
           git branch -M allure-history
           git push -f origin allure-history
 
+      # В конце возвращаем workflow в failed-статус, если тесты реально упали
       - name: Fail workflow if tests failed
         if: steps.tests.outcome == 'failure'
         run: exit 1

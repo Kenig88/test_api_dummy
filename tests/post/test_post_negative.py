@@ -1,6 +1,5 @@
 import allure
 import pytest
-import requests
 
 from config.base_test import BaseTest
 from services.post.post_payload import PostPayload
@@ -14,11 +13,11 @@ class TestPostNegative(BaseTest):
     # -------------------------------------------------APP_ID_MISSING---------------------------------------------------
     @allure.title("TestPostNegative --> APP_ID_MISSING")
     def test_app_id_missing(self):
-        session = requests.Session()
-        response = session.get(
+        response = self.api_post.send_request(
+            method="GET",
             url=self.api_post.endpoint.get_list_posts(),
             params={"page": 0, "limit": 5},
-            timeout=self.api_post.timeout
+            use_default_headers=False,
         )
         assert response.status_code in (401, 403), response.text
         assert response.json().get("error") == "APP_ID_MISSING"
@@ -26,12 +25,12 @@ class TestPostNegative(BaseTest):
     # -------------------------------------------------APP_ID_NOT_EXIST-------------------------------------------------
     @allure.title("TestPostNegative --> APP_ID_NOT_EXIST")
     def test_app_id_not_exist(self):
-        session = requests.Session()
-        session.headers.update({"app-id": "invalid_app_id_value"})
-        response = session.get(
+        response = self.api_post.send_request(
+            method="GET",
             url=self.api_post.endpoint.get_list_posts(),
             params={"page": 0, "limit": 5},
-            timeout=self.api_post.timeout
+            headers={"app-id": "invalid_app_id_value"},
+            use_default_headers=False,
         )
         assert response.status_code in (401, 403), response.text
         assert response.json().get("error") == "APP_ID_NOT_EXIST"
@@ -40,9 +39,9 @@ class TestPostNegative(BaseTest):
     @allure.title("TestPostNegative --> PARAMS_NOT_VALID (bad id)")
     @pytest.mark.parametrize("bad_post_id", ["123", "not-an-id", "!!!!!!!!!!"])
     def test_params_not_valid_by_id(self, bad_post_id: str):
-        response = self.api_post.http_session.get(
+        response = self.api_post.send_request(
+            method="GET",
             url=self.api_post.endpoint.get_post_by_post_id(bad_post_id),
-            timeout=self.api_post.timeout
         )
         assert response.status_code == 400, response.text
         assert response.json().get("error") == "PARAMS_NOT_VALID"
@@ -50,10 +49,10 @@ class TestPostNegative(BaseTest):
     @allure.title("TestPostNegative --> bad pagination (400 or normalized 200)")
     @pytest.mark.parametrize("params", [{"page": -1, "limit": 10}, {"page": 0, "limit": 999}])
     def test_bad_pagination(self, params: dict):
-        response = self.api_post.http_session.get(
+        response = self.api_post.send_request(
+            method="GET",
             url=self.api_post.endpoint.get_list_posts(),
             params=params,
-            timeout=self.api_post.timeout
         )
         if response.status_code == 400:
             assert response.json().get("error") == "PARAMS_NOT_VALID"
@@ -72,10 +71,10 @@ class TestPostNegative(BaseTest):
         payload = PostPayload.create_post_payload(user_id=str(user.id))
         payload.pop("owner", None)
 
-        response_post = self.api_post.http_session.post(
+        response_post = self.api_post.send_request(
+            method="POST",
             url=self.api_post.endpoint.create_post(),
             json=payload,
-            timeout=self.api_post.timeout
         )
         assert response_post.status_code == 400, response_post.text
         assert response_post.json().get("error") == "BODY_NOT_VALID"
@@ -83,9 +82,9 @@ class TestPostNegative(BaseTest):
     # -----------------------------------------------RESOURCE_NOT_FOUND-------------------------------------------------
     @allure.title("TestPostNegative --> RESOURCE_NOT_FOUND (valid id, not exists)")
     def test_resource_not_found_by_id(self):
-        response = self.api_post.http_session.get(
+        response = self.api_post.send_request(
+            method="GET",
             url=self.api_post.endpoint.get_post_by_post_id("f" * 24),
-            timeout=self.api_post.timeout
         )
         assert response.status_code == 404, response.text
         assert response.json().get("error") == "RESOURCE_NOT_FOUND"
@@ -96,9 +95,9 @@ class TestPostNegative(BaseTest):
         list_url = self.api_post.endpoint.get_list_posts()
         base = list_url.rsplit("/", 1)[0]
 
-        response = self.api_post.http_session.get(
+        response = self.api_post.send_request(
+            method="GET",
             url=f"{base}/wrong-path",
-            timeout=self.api_post.timeout
         )
         assert response.status_code == 404, response.text
         assert response.json().get("error") == "PATH_NOT_FOUND"

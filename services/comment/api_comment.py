@@ -2,14 +2,14 @@ import allure
 import requests
 
 from services.api_base import ApiBase
-from utils.helper import Helper
+
 from services.comment.comment_endpoints import CommentEndpoints
 from services.comment.comment_payload import CommentPayload
 from services.comment.comment_models import (CommentResponseModel, CommentsListResponseModel, \
                                              CommentDeleteResponseModel, CommentAfterDeleteResponseModel)
 
 
-class ApiComment(ApiBase, Helper):
+class ApiComment(ApiBase):
     def __init__(self, http_session: requests.Session, endpoints: CommentEndpoints, timeout: int = 15):
         super().__init__(http_session=http_session, timeout=timeout)
         self.endpoint = endpoints

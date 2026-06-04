@@ -11,6 +11,7 @@ x-base: &base
     BASE_URL: ${BASE_URL:?BASE_URL is required}
     API_TOKEN: ${API_TOKEN:?API_TOKEN is required}
     PYTEST_WORKERS: ${PYTEST_WORKERS:-2}
+    TZ: Europe/Moscow
 
 
 services:
