@@ -4,9 +4,9 @@ import allure
 import requests
 
 from services.api_base import ApiBase
+from services.error_models import ErrorResponseModel
 from services.user.user_endpoints import UserEndpoints
 from services.user.user_models import (
-    UserAfterDeleteResponseModel,
     UserDeleteResponseModel,
     UserListResponseModel,
     UserResponseModel,
@@ -47,7 +47,7 @@ class ApiUser(ApiBase):
         self,
         user_id: str,
         expected_status_code: int = 200,
-    ) -> UserResponseModel | UserAfterDeleteResponseModel:
+    ) -> UserResponseModel | ErrorResponseModel:
         response = self.send_request(
             method="GET",
             url=self.endpoint.get_user_by_id(user_id),
@@ -56,11 +56,8 @@ class ApiUser(ApiBase):
 
         if expected_status_code == 200:
             return UserResponseModel.model_validate(body)
-        if expected_status_code == 404:
-            return UserAfterDeleteResponseModel.model_validate(body)
 
-        msg = f"Unsupported expected_status_code for get_user_by_id: {expected_status_code}"
-        raise ValueError(msg)
+        return ErrorResponseModel.model_validate(body)
 
     @allure.step("PUT == /user/{user_id}")
     def update_user(self, user_id: str, payload: dict | None = None) -> UserResponseModel:
@@ -76,7 +73,12 @@ class ApiUser(ApiBase):
         return UserResponseModel.model_validate(body)
 
     @allure.step("DELETE == /user/{user_id}")
-    def delete_user(self, user_id: str, allow_not_found: bool = False) -> Optional[UserDeleteResponseModel]:
+    def delete_user(
+        self,
+        user_id: str,
+        expected_status_code: int = 200,
+        allow_not_found: bool = False,
+    ) -> Optional[UserDeleteResponseModel | ErrorResponseModel]:
         response = self.send_request(
             method="DELETE",
             url=self.endpoint.delete_user(user_id),
@@ -85,8 +87,11 @@ class ApiUser(ApiBase):
         if allow_not_found and response.status_code == 404:
             return None
 
-        body = self._check_status_code(response, ok_statuses=[200, 204])
-        if response.status_code == 204:
-            return None
+        if expected_status_code == 200:
+            body = self._check_status_code(response, ok_statuses=[200, 204])
+            if response.status_code == 204:
+                return None
+            return UserDeleteResponseModel.model_validate(body) if body else None
 
-        return UserDeleteResponseModel.model_validate(body) if body else None
+        body = self._check_status_code(response, ok_statuses=[expected_status_code])
+        return ErrorResponseModel.model_validate(body)

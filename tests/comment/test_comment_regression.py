@@ -91,5 +91,5 @@ class TestCommentRegression(BaseTest):
         deleted_comment = self.api_comment.delete_comment(comment.id)
         assert deleted_comment.id == comment.id
 
-        err = self.api_comment.delete_comment(comment.id)
+        err = self.api_comment.delete_comment(comment.id, expected_status_code=404)
         assert err.error == "RESOURCE_NOT_FOUND"

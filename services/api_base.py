@@ -1,8 +1,10 @@
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 import requests
 
+from services.error_models import ErrorResponseModel
 from utils.helper import Helper
 
 logger = logging.getLogger(__name__)
@@ -42,7 +44,7 @@ class ApiBase(Helper):
 
         return response
 
-    def _check_status_code(self, response: requests.Response, ok_statuses: list[int]) -> Any:
+    def _check_status_code(self, response: requests.Response, ok_statuses: Sequence[int]) -> Any:
         body = self._json(response)
 
         assert response.status_code in ok_statuses, {
@@ -52,3 +54,22 @@ class ApiBase(Helper):
         }
 
         return body
+
+    def assert_error_response(
+        self,
+        response: requests.Response,
+        expected_statuses: Sequence[int],
+        expected_error: str,
+    ) -> ErrorResponseModel:
+        body = self._check_status_code(response, ok_statuses=expected_statuses)
+        error = ErrorResponseModel.model_validate(body)
+
+        assert error.error == expected_error, {
+            "expected_error": expected_error,
+            "actual_error": error.error,
+            "status": response.status_code,
+            "url": str(response.url),
+            "body": body,
+        }
+
+        return error

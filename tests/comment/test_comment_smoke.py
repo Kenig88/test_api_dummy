@@ -53,5 +53,5 @@ class TestCommentSmoke(BaseTest):
             assert deleted_comment.id == comment_id
 
         with allure.step("test_comment_smoke -> DELETE again after delete should be 404"):
-            err = self.api_comment.delete_comment(comment_id)
+            err = self.api_comment.delete_comment(comment_id, expected_status_code=404)
             assert err.error == "RESOURCE_NOT_FOUND"

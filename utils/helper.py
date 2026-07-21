@@ -1,11 +1,44 @@
 import json
+from typing import Any
 
 import allure
 import requests
 
 
 class Helper:
-    """Helper: безопасно прикрепляет API-ответы к Allure."""
+    """Helper: безопасно прикрепляет API-запросы и ответы к Allure."""
+
+    SENSITIVE_HEADERS = {"app-id", "authorization"}
+
+    def _mask_sensitive_headers(self, headers: Any) -> dict[str, str]:
+        return {
+            str(key): "***" if str(key).lower() in self.SENSITIVE_HEADERS else str(value)
+            for key, value in dict(headers).items()
+        }
+
+    def _mask_sensitive_values(self, text: str, headers: Any) -> str:
+        masked_text = text
+
+        for key, value in dict(headers).items():
+            if str(key).lower() in self.SENSITIVE_HEADERS and value:
+                masked_text = masked_text.replace(str(value), "***")
+
+        return masked_text
+
+    def _format_request_body(self, body: Any) -> str:
+        if body is None:
+            return "<empty>"
+
+        if isinstance(body, bytes):
+            body = body.decode("utf-8", errors="replace")
+
+        if not isinstance(body, str):
+            return str(body)
+
+        try:
+            return json.dumps(json.loads(body), indent=2, ensure_ascii=False)
+        except (TypeError, ValueError):
+            return body
 
     def _format_response_body(self, response: requests.Response) -> str:
         try:
@@ -29,8 +62,16 @@ class Helper:
 
         try:
             request = response.request
+            headers = self._mask_sensitive_headers(request.headers)
+            request_body = self._format_request_body(request.body)
+            request_body = self._mask_sensitive_values(request_body, request.headers)
+
             allure.attach(
-                f"{request.method} {request.url}",
+                (
+                    f"{request.method} {request.url}\n\n"
+                    f"Headers:\n{json.dumps(headers, indent=2, ensure_ascii=False)}\n\n"
+                    f"Body:\n{request_body}"
+                ),
                 name="Request",
                 attachment_type=allure.attachment_type.TEXT,
             )

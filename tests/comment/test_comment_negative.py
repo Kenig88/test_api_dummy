@@ -18,8 +18,7 @@ class TestCommentNegative(BaseTest):
             params={"page": 0, "limit": 5},
             use_default_headers=False,
         )
-        assert response.status_code in (401, 403), response.text
-        assert response.json().get("error") == "APP_ID_MISSING"
+        self.api_comment.assert_error_response(response, [401, 403], "APP_ID_MISSING")
 
     @allure.title("TestCommentNegative --> APP_ID_NOT_EXIST")
     def test_app_id_not_exist(self):
@@ -30,8 +29,7 @@ class TestCommentNegative(BaseTest):
             headers={"app-id": "invalid_app_id_value"},
             use_default_headers=False,
         )
-        assert response.status_code in (401, 403), response.text
-        assert response.json().get("error") == "APP_ID_NOT_EXIST"
+        self.api_comment.assert_error_response(response, [401, 403], "APP_ID_NOT_EXIST")
 
     @allure.title("TestCommentNegative --> PARAMS_NOT_VALID (bad id)")
     @pytest.mark.parametrize("bad_comment_id", ["123", "not-an-id", "!!!!!!!!"])
@@ -40,8 +38,7 @@ class TestCommentNegative(BaseTest):
             method="DELETE",
             url=self.api_comment.endpoint.delete_comment(bad_comment_id),
         )
-        assert response.status_code == 400, response.text
-        assert response.json().get("error") == "PARAMS_NOT_VALID"
+        self.api_comment.assert_error_response(response, [400], "PARAMS_NOT_VALID")
 
     @allure.title("TestCommentNegative --> bad pagination (400 or normalized 200)")
     @pytest.mark.parametrize("params", [{"page": -1, "limit": 10}, {"page": 0, "limit": 0}])
@@ -52,7 +49,7 @@ class TestCommentNegative(BaseTest):
             params=params,
         )
         if response.status_code == 400:
-            assert response.json().get("error") == "PARAMS_NOT_VALID"
+            self.api_comment.assert_error_response(response, [400], "PARAMS_NOT_VALID")
         else:
             assert response.status_code == 200, response.text
             body = response.json()
@@ -74,8 +71,7 @@ class TestCommentNegative(BaseTest):
             url=self.api_comment.endpoint.create_comment(),
             json=payload,
         )
-        assert response_comment.status_code == 400, response_comment.text
-        assert response_comment.json().get("error") == "BODY_NOT_VALID"
+        self.api_comment.assert_error_response(response_comment, [400], "BODY_NOT_VALID")
 
     @allure.title("TestCommentNegative --> RESOURCE_NOT_FOUND (valid id, not exists)")
     def test_resource_not_found_by_id(self):
@@ -83,8 +79,7 @@ class TestCommentNegative(BaseTest):
             method="DELETE",
             url=self.api_comment.endpoint.delete_comment("f" * 24),
         )
-        assert response.status_code == 404, response.text
-        assert response.json().get("error") == "RESOURCE_NOT_FOUND"
+        self.api_comment.assert_error_response(response, [404], "RESOURCE_NOT_FOUND")
 
     @allure.title("TestCommentNegative --> PATH_NOT_FOUND")
     def test_path_not_found(self):
@@ -95,5 +90,4 @@ class TestCommentNegative(BaseTest):
             method="GET",
             url=f"{base}/wrong-path",
         )
-        assert response.status_code == 404, response.text
-        assert response.json().get("error") == "PATH_NOT_FOUND"
+        self.api_comment.assert_error_response(response, [404], "PATH_NOT_FOUND")

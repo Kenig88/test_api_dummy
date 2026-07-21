@@ -19,8 +19,7 @@ class TestPostNegative(BaseTest):
             params={"page": 0, "limit": 5},
             use_default_headers=False,
         )
-        assert response.status_code in (401, 403), response.text
-        assert response.json().get("error") == "APP_ID_MISSING"
+        self.api_post.assert_error_response(response, [401, 403], "APP_ID_MISSING")
 
     # -------------------------------------------------APP_ID_NOT_EXIST-------------------------------------------------
     @allure.title("TestPostNegative --> APP_ID_NOT_EXIST")
@@ -32,8 +31,7 @@ class TestPostNegative(BaseTest):
             headers={"app-id": "invalid_app_id_value"},
             use_default_headers=False,
         )
-        assert response.status_code in (401, 403), response.text
-        assert response.json().get("error") == "APP_ID_NOT_EXIST"
+        self.api_post.assert_error_response(response, [401, 403], "APP_ID_NOT_EXIST")
 
     # -------------------------------------------------PARAMS_NOT_VALID-------------------------------------------------
     @allure.title("TestPostNegative --> PARAMS_NOT_VALID (bad id)")
@@ -43,8 +41,7 @@ class TestPostNegative(BaseTest):
             method="GET",
             url=self.api_post.endpoint.get_post_by_post_id(bad_post_id),
         )
-        assert response.status_code == 400, response.text
-        assert response.json().get("error") == "PARAMS_NOT_VALID"
+        self.api_post.assert_error_response(response, [400], "PARAMS_NOT_VALID")
 
     @allure.title("TestPostNegative --> bad pagination (400 or normalized 200)")
     @pytest.mark.parametrize("params", [{"page": -1, "limit": 10}, {"page": 0, "limit": 999}])
@@ -55,7 +52,7 @@ class TestPostNegative(BaseTest):
             params=params,
         )
         if response.status_code == 400:
-            assert response.json().get("error") == "PARAMS_NOT_VALID"
+            self.api_post.assert_error_response(response, [400], "PARAMS_NOT_VALID")
         else:
             assert response.status_code == 200, response.text
             body = response.json()
@@ -76,8 +73,7 @@ class TestPostNegative(BaseTest):
             url=self.api_post.endpoint.create_post(),
             json=payload,
         )
-        assert response_post.status_code == 400, response_post.text
-        assert response_post.json().get("error") == "BODY_NOT_VALID"
+        self.api_post.assert_error_response(response_post, [400], "BODY_NOT_VALID")
 
     # -----------------------------------------------RESOURCE_NOT_FOUND-------------------------------------------------
     @allure.title("TestPostNegative --> RESOURCE_NOT_FOUND (valid id, not exists)")
@@ -86,8 +82,7 @@ class TestPostNegative(BaseTest):
             method="GET",
             url=self.api_post.endpoint.get_post_by_post_id("f" * 24),
         )
-        assert response.status_code == 404, response.text
-        assert response.json().get("error") == "RESOURCE_NOT_FOUND"
+        self.api_post.assert_error_response(response, [404], "RESOURCE_NOT_FOUND")
 
     # -------------------------------------------------PATH_NOT_FOUND---------------------------------------------------
     @allure.title("TestPostNegative --> PATH_NOT_FOUND")
@@ -99,5 +94,4 @@ class TestPostNegative(BaseTest):
             method="GET",
             url=f"{base}/wrong-path",
         )
-        assert response.status_code == 404, response.text
-        assert response.json().get("error") == "PATH_NOT_FOUND"
+        self.api_post.assert_error_response(response, [404], "PATH_NOT_FOUND")

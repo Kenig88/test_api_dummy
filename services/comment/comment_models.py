@@ -34,9 +34,3 @@ class CommentDeleteResponseModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
-
-
-class CommentAfterDeleteResponseModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    error: str
