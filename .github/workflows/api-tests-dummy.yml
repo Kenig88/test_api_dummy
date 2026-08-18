@@ -62,21 +62,44 @@ jobs:
         run: docker compose build
 
       # Запускает выбранный test suite: all, smoke, regression или negative.
-      # continue-on-error нужен, чтобы workflow не остановился сразу после падения тестов,
-      # а успел сохранить логи и сгенерировать Allure-отчёт.
+      # continue-on-error нужен, чтобы workflow сохранил логи и создал Allure-отчёт
+      # даже при падении тестов.
       - name: Run selected test suite
         id: tests
         continue-on-error: true
         run: docker compose run --rm -e PYTEST_WORKERS=${{ github.event.inputs.workers }} ${{ github.event.inputs.suite }}
 
       # Исправляет права на файлы, созданные внутри Docker-контейнера.
-      # Без этого GitHub Actions может не иметь доступа к allure-results и logs.
       - name: Fix artifact permissions
         if: always()
         run: sudo chown -R $USER:$USER allure-results logs || true
 
+      # Добавляет в Allure информацию о GitHub Actions и окружении запуска.
+      - name: Add Allure metadata
+        if: always()
+        run: |
+          mkdir -p allure-results
+
+          cat > allure-results/executor.json <<EOF
+          {
+            "reportName": "API Tests: ${{ github.event.inputs.suite }}",
+            "buildOrder": ${{ github.run_number }},
+            "name": "GitHub Actions",
+            "type": "github",
+            "buildName": "Run #${{ github.run_number }} (${{ github.event.inputs.suite }})",
+            "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+
+          cat > allure-results/environment.properties <<EOF
+          Test_suite=${{ github.event.inputs.suite }}
+          Workers=${{ github.event.inputs.workers }}
+          Runner_OS=${{ runner.os }}
+          CI=GitHub Actions
+          Docker=true
+          EOF
+
       # Загружает pytest-логи как artifact.
-      # Их можно скачать из GitHub Actions после завершения workflow.
       - name: Upload test logs
         if: always()
         uses: actions/upload-artifact@v7
@@ -94,7 +117,6 @@ jobs:
           java-version: "17"
 
       # Кэширует Allure CLI в /opt/allure.
-      # Если кэш найден, Allure не придётся скачивать заново при каждом запуске.
       - name: Cache Allure CLI
         uses: actions/cache@v6
         with:
@@ -102,7 +124,6 @@ jobs:
           key: allure-2.27.0
 
       # Устанавливает Allure CLI, если он не был найден в кэше.
-      # После установки создаёт ссылку /usr/bin/allure.
       - name: Install Allure CLI
         run: |
           if [ ! -x /opt/allure/bin/allure ]; then
@@ -119,7 +140,7 @@ jobs:
       - name: Fetch Allure history branch
         run: git fetch --depth=1 origin allure-history:allure-history || true
 
-      # Восстанавливает старую Allure history.
+      # Восстанавливает историю предыдущих запусков.
       - name: Restore Allure history
         run: |
           if git show-ref --verify --quiet refs/heads/allure-history; then
@@ -133,16 +154,19 @@ jobs:
             git checkout -- .
           fi
 
-      # Генерирует HTML-отчёт Allure.
-      - name: Generate Allure report
+      # Обычный отчёт формирует историю, а цельный single-file отчёт
+      # публикуется на GitHub Pages без смешивания файлов разных запусков.
+      - name: Generate Allure reports
         if: always()
-        run: allure generate allure-results -o allure-report --clean
+        run: |
+          allure generate allure-results -o allure-report-history --clean
+          allure generate allure-results -o allure-report --clean --single-file
 
       # Подготавливает GitHub Pages.
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
 
-      # Загружает Allure-отчёт как GitHub Pages artifact.
+      # Загружает цельный Allure-отчёт как GitHub Pages artifact.
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
@@ -163,7 +187,7 @@ jobs:
           git rm -rf . >/dev/null 2>&1 || true
 
           mkdir history
-          cp -r allure-report/history/* history/ || true
+          cp -r allure-report-history/history/* history/ || true
 
           git add history
           git commit -m "Update Allure history" || true
