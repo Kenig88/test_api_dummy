@@ -25,6 +25,12 @@ on:
           - "3"
           - "4"
 
+# Одновременно разрешён только один запуск публикации GitHub Pages.
+# Новый workflow дождётся завершения предыдущего.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   run-tests:
     name: Run API tests
