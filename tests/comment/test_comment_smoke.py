@@ -8,7 +8,6 @@ from config.base_test import BaseTest
 @allure.feature("Comment")
 @pytest.mark.smoke
 class TestCommentSmoke(BaseTest):
-
     @allure.title("Smoke: CREATE -> GET by user_id -> GET by post_id -> DELETE -> DELETE again")
     def test_comment_smoke(self, created_user, created_post, created_comment):
         user = created_user()
@@ -29,8 +28,11 @@ class TestCommentSmoke(BaseTest):
                 limit=10,
             )
             comments_user = response_user.data
-            assert any(item.id == comment_id for item in comments_user)
-            assert any(item.owner.id == user.id for item in comments_user)
+            comment_by_user = next((item for item in comments_user if item.id == comment_id), None)
+            assert comment_by_user is not None
+            assert comment_by_user.owner.id == user.id
+            assert comment_by_user.post == post.id
+            assert comment_by_user.message == comment.message
             assert response_user.page == 0
             assert response_user.limit == 10
             assert response_user.total >= 1
@@ -42,8 +44,11 @@ class TestCommentSmoke(BaseTest):
                 limit=15,
             )
             comments_post = response_post.data
-            assert any(item.id == comment_id for item in comments_post)
-            assert any(item.post == post.id for item in comments_post)
+            comment_by_post = next((item for item in comments_post if item.id == comment_id), None)
+            assert comment_by_post is not None
+            assert comment_by_post.owner.id == user.id
+            assert comment_by_post.post == post.id
+            assert comment_by_post.message == comment.message
             assert response_post.page == 0
             assert response_post.limit == 15
             assert response_post.total >= 1

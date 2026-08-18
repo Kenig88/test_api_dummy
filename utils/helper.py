@@ -1,14 +1,17 @@
 import json
-from typing import Any
+import logging
+from typing import Any, ClassVar
 
 import allure
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class Helper:
     """Helper: безопасно прикрепляет API-запросы и ответы к Allure."""
 
-    SENSITIVE_HEADERS = {"app-id", "authorization"}
+    SENSITIVE_HEADERS: ClassVar[frozenset[str]] = frozenset({"app-id", "authorization"})
 
     def _mask_sensitive_headers(self, headers: Any) -> dict[str, str]:
         return {
@@ -75,8 +78,8 @@ class Helper:
                 name="Request",
                 attachment_type=allure.attachment_type.TEXT,
             )
-        except Exception:
-            pass
+        except Exception:  # Reporting must never break an API test.
+            logger.debug("Could not attach request to Allure", exc_info=True)
 
         try:
             allure.attach(
@@ -88,6 +91,23 @@ class Helper:
                 name="Response",
                 attachment_type=allure.attachment_type.TEXT,
             )
-            setattr(response, "_allure_attached", True)
-        except Exception:
-            pass
+            response._allure_attached = True
+        except Exception:  # Reporting must never break an API test.
+            logger.debug("Could not attach response to Allure", exc_info=True)
+
+    def attach_transport_error_safe(
+        self,
+        method: str,
+        url: str,
+        timeout: Any,
+        error: requests.RequestException,
+    ) -> None:
+        """Прикрепляет transport error, не влияя на исход самого теста."""
+        try:
+            allure.attach(
+                (f"{method.upper()} {url}\nTimeout: {timeout!r}\nError: {type(error).__name__}: {error}"),
+                name="Transport error",
+                attachment_type=allure.attachment_type.TEXT,
+            )
+        except Exception:  # Reporting must never hide the original request error.
+            logger.debug("Could not attach transport error to Allure", exc_info=True)

@@ -1,21 +1,21 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Owner(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
-    firstName: str
-    lastName: str
+    firstName: str = Field(min_length=2, max_length=50)
+    lastName: str = Field(min_length=2, max_length=50)
 
 
 class CommentResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
-    message: str
+    message: str = Field(min_length=2, max_length=500)
     owner: Owner
     post: str
     publishDate: datetime
@@ -25,9 +25,9 @@ class CommentsListResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     data: list[CommentResponseModel]
-    total: int
-    page: int
-    limit: int
+    total: int = Field(strict=True, ge=0)
+    page: int = Field(strict=True, ge=0, le=999)
+    limit: int = Field(strict=True, ge=5, le=50)
 
 
 class CommentDeleteResponseModel(BaseModel):

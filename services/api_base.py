@@ -30,8 +30,29 @@ class ApiBase(Helper):
     ) -> requests.Response:
         kwargs.setdefault("timeout", self.timeout)
 
-        requester = self.http_session.request if use_default_headers else requests.request
-        response = requester(method=method, url=url, **kwargs)
+        if not use_default_headers:
+            headers = dict(kwargs.pop("headers", {}) or {})
+            headers.setdefault("app-id", None)
+            headers.setdefault("Accept", None)
+            headers.setdefault("Content-Type", None)
+            kwargs["headers"] = headers
+
+        try:
+            response = self.http_session.request(method=method, url=url, **kwargs)
+        except requests.RequestException as error:
+            logger.exception(
+                "%s %s -> %s",
+                method.upper(),
+                url,
+                type(error).__name__,
+            )
+            self.attach_transport_error_safe(
+                method=method,
+                url=url,
+                timeout=kwargs.get("timeout"),
+                error=error,
+            )
+            raise
 
         self.attach_response_safe(response)
 
@@ -58,10 +79,10 @@ class ApiBase(Helper):
     def assert_error_response(
         self,
         response: requests.Response,
-        expected_statuses: Sequence[int],
+        expected_status: int,
         expected_error: str,
     ) -> ErrorResponseModel:
-        body = self._check_status_code(response, ok_statuses=expected_statuses)
+        body = self._check_status_code(response, ok_statuses=[expected_status])
         error = ErrorResponseModel.model_validate(body)
 
         assert error.error == expected_error, {

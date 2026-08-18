@@ -2,20 +2,26 @@ import allure
 import pytest
 
 from config.base_test import BaseTest
+from services.comment.comment_payload import CommentPayload
 
 
 @allure.epic("Administration")
 @allure.feature("Comment")
 @pytest.mark.regression
 class TestCommentRegression(BaseTest):
-
     @allure.title("TestCommentRegression --> test_create_comment()")
-    def test_create_comment(self, created_comment):
-        comment = created_comment()
-        assert comment.id is not None
-        assert comment.owner is not None
-        assert comment.post is not None
-        assert comment.message is not None
+    def test_create_comment(self, created_user, created_post, created_comment):
+        user = created_user()
+        user_id = str(user.id)
+        post = created_post(user_id=user_id)
+        post_id = str(post.id)
+        payload = CommentPayload.comment_create_payload(user_id=user_id, post_id=post_id)
+        comment = created_comment(user_id=user_id, post_id=post_id, overrides=payload)
+
+        assert comment.id
+        assert comment.message == payload["message"]
+        assert comment.owner.id == user_id
+        assert comment.post == post_id
 
     @allure.title("TestCommentRegression --> test_get_list_comments_by_user_id()")
     def test_get_list_comments_by_user_id(self, created_comment, created_user, created_post):

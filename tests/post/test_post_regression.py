@@ -9,16 +9,19 @@ from services.post.post_payload import PostPayload
 @allure.feature("Post")
 @pytest.mark.regression
 class TestPostRegression(BaseTest):
-
     @allure.title("TestPostRegression --> test_create_post()")
-    def test_create_post(self, created_post):
-        post = created_post()
-        assert post.id is not None
-        assert post.text is not None
-        assert post.image is not None
-        assert post.likes is not None
-        assert post.tags is not None
-        assert post.owner is not None
+    def test_create_post(self, created_user, created_post):
+        user = created_user()
+        user_id = str(user.id)
+        payload = PostPayload.create_post_payload(user_id)
+        post = created_post(user_id=user_id, overrides=payload)
+
+        assert post.id
+        assert post.text == payload["text"]
+        assert post.image == payload["image"]
+        assert post.likes == payload["likes"]
+        assert post.tags == payload["tags"]
+        assert post.owner.id == user_id
 
     @allure.title("TestPostRegression --> test_get_list_posts_by_user_id()")
     def test_get_list_posts_by_user_id(self, created_post, created_user):
@@ -90,7 +93,7 @@ class TestPostRegression(BaseTest):
         assert updated_post.id == post.id
         assert updated_post.link == post.link
         assert updated_post.publishDate == post.publishDate
-        assert updated_post.updatedDate >= post.updatedDate
+        assert updated_post.updatedDate > post.updatedDate
         assert updated_post.owner.id == post.owner.id
         assert updated_post.owner.firstName == post.owner.firstName
         assert updated_post.owner.lastName == post.owner.lastName

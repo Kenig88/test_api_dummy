@@ -1,5 +1,3 @@
-from typing import Optional
-
 import allure
 import requests
 
@@ -23,6 +21,10 @@ class ApiPost(ApiBase):
     def create_post(self, user_id: str, payload: dict | None = None) -> PostResponseModel:
         if payload is None:
             payload = PostPayload.create_post_payload(user_id)
+        else:
+            payload = dict(payload)
+            if payload.get("owner") != user_id:
+                raise ValueError("payload['owner'] must match user_id")
 
         response = self.send_request(
             method="POST",
@@ -88,7 +90,7 @@ class ApiPost(ApiBase):
         post_id: str,
         expected_status_code: int = 200,
         allow_not_found: bool = False,
-    ) -> Optional[PostDeleteResponseModel | ErrorResponseModel]:
+    ) -> PostDeleteResponseModel | ErrorResponseModel | None:
         response = self.send_request(
             method="DELETE",
             url=self.endpoint.delete_post(post_id),
@@ -97,11 +99,10 @@ class ApiPost(ApiBase):
         if allow_not_found and response.status_code == 404:
             return None
 
-        if expected_status_code == 200:
-            body = self._check_status_code(response, ok_statuses=[200, 204])
-            if response.status_code == 204:
-                return None
-            return PostDeleteResponseModel.model_validate(body) if body else None
-
         body = self._check_status_code(response, ok_statuses=[expected_status_code])
+
+        if expected_status_code == 204:
+            return None
+        if expected_status_code == 200:
+            return PostDeleteResponseModel.model_validate(body)
         return ErrorResponseModel.model_validate(body)

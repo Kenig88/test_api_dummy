@@ -1,5 +1,3 @@
-from typing import Optional
-
 import allure
 import requests
 
@@ -23,6 +21,12 @@ class ApiComment(ApiBase):
     def create_comment(self, user_id: str, post_id: str, payload: dict | None = None) -> CommentResponseModel:
         if payload is None:
             payload = CommentPayload.comment_create_payload(user_id, post_id)
+        else:
+            payload = dict(payload)
+            if payload.get("owner") != user_id:
+                raise ValueError("payload['owner'] must match user_id")
+            if payload.get("post") != post_id:
+                raise ValueError("payload['post'] must match post_id")
 
         response = self.send_request(
             method="POST",
@@ -68,7 +72,7 @@ class ApiComment(ApiBase):
         comment_id: str,
         expected_status_code: int = 200,
         allow_not_found: bool = False,
-    ) -> Optional[CommentDeleteResponseModel | ErrorResponseModel]:
+    ) -> CommentDeleteResponseModel | ErrorResponseModel | None:
         response = self.send_request(
             method="DELETE",
             url=self.endpoint.delete_comment(comment_id),
@@ -77,11 +81,10 @@ class ApiComment(ApiBase):
         if allow_not_found and response.status_code == 404:
             return None
 
-        if expected_status_code == 200:
-            body = self._check_status_code(response, ok_statuses=[200, 204])
-            if response.status_code == 204:
-                return None
-            return CommentDeleteResponseModel.model_validate(body) if body else None
-
         body = self._check_status_code(response, ok_statuses=[expected_status_code])
+
+        if expected_status_code == 204:
+            return None
+        if expected_status_code == 200:
+            return CommentDeleteResponseModel.model_validate(body)
         return ErrorResponseModel.model_validate(body)

@@ -11,7 +11,7 @@ class UserResponseModel(BaseModel):
     lastName: str = Field(min_length=2, max_length=50)
     email: EmailStr
     dateOfBirth: datetime
-    phone: str
+    phone: str = Field(min_length=1)
     registerDate: datetime
     updatedDate: datetime
 
@@ -30,9 +30,9 @@ class UserListResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     data: list[UserList]
-    total: int
-    page: int
-    limit: int
+    total: int = Field(strict=True, ge=0)
+    page: int = Field(strict=True, ge=0, le=999)
+    limit: int = Field(strict=True, ge=5, le=50)
 
 
 class UserDeleteResponseModel(BaseModel):

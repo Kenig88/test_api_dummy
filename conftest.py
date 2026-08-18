@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 import requests
 from dotenv import load_dotenv
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from services.comment.api_comment import ApiComment
 from services.comment.comment_endpoints import CommentEndpoints
@@ -21,6 +23,7 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).resolve().parent
 LOGS_DIR = PROJECT_ROOT / "logs"
 DEFAULT_TIMEOUT = 15
+SAFE_METHOD_RETRIES = 1
 
 logger = logging.getLogger("tests")
 
@@ -41,20 +44,26 @@ def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
 
-    if report.when == "call":
-        setattr(item, "_test_outcome", report.outcome.upper())
+    if report.failed:
+        item._test_outcome = "FAILED" if report.when == "call" else "ERROR"
+    elif report.skipped and not hasattr(item, "_test_outcome"):
+        item._test_outcome = "SKIPPED"
+    elif report.when == "call":
+        item._test_outcome = "PASSED"
+
+    if report.when == "teardown":
+        worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
+        result = getattr(item, "_test_outcome", "FINISHED")
+        logger.info("[%s] END TEST: %s -> %s", worker, item.nodeid, result)
 
 
 @pytest.fixture(autouse=True)
-def log_test_start_finish(request):
+def log_test_start(request):
     worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
     test_name = request.node.nodeid
 
     logger.info("[%s] START TEST: %s", worker, test_name)
     yield
-
-    result = getattr(request.node, "_test_outcome", "FINISHED")
-    logger.info("[%s] END TEST: %s -> %s", worker, test_name, result)
 
 
 def _get_env(name: str) -> str:
@@ -76,6 +85,19 @@ def api_token() -> str:
 @pytest.fixture(scope="session")
 def http_session(api_token: str) -> requests.Session:
     session = requests.Session()
+    retry = Retry(
+        total=SAFE_METHOD_RETRIES,
+        connect=SAFE_METHOD_RETRIES,
+        read=SAFE_METHOD_RETRIES,
+        status=SAFE_METHOD_RETRIES,
+        backoff_factor=0.5,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset({"GET", "HEAD", "OPTIONS"}),
+        respect_retry_after_header=True,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
     session.headers.update(
         {
             "app-id": api_token,
@@ -88,6 +110,7 @@ def http_session(api_token: str) -> requests.Session:
 
 
 # ======================================================== USER ========================================================
+
 
 @pytest.fixture(scope="session")
 def user_endpoints(base_url: str) -> UserEndpoints:
@@ -119,6 +142,7 @@ def created_user(api_user: ApiUser):
 
 
 # ======================================================== POST ========================================================
+
 
 @pytest.fixture(scope="session")
 def post_endpoints(base_url: str) -> PostEndpoints:
@@ -153,6 +177,7 @@ def created_post(api_post: ApiPost, created_user):
 
 
 # ====================================================== COMMENT =======================================================
+
 
 @pytest.fixture(scope="session")
 def comment_endpoints(base_url: str) -> CommentEndpoints:
