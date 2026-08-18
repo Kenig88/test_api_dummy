@@ -49,7 +49,7 @@ jobs:
     steps:
       # Скачивает код репозитория внутрь GitHub Actions runner.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Собирает Docker-образ по Dockerfile и docker-compose.yml.
       - name: Build Docker image
@@ -73,7 +73,7 @@ jobs:
       # Их можно скачать из GitHub Actions после завершения workflow.
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-logs
           path: logs/
@@ -82,7 +82,7 @@ jobs:
 
       # Устанавливает Java, потому что Allure CLI работает через Java.
       - name: Install Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -90,7 +90,7 @@ jobs:
       # Кэширует Allure CLI в /opt/allure.
       # Если кэш найден, Allure не придётся скачивать заново при каждом запуске.
       - name: Cache Allure CLI
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /opt/allure
           key: allure-2.27.0
@@ -134,18 +134,18 @@ jobs:
 
       # Подготавливает GitHub Pages.
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       # Загружает Allure-отчёт как GitHub Pages artifact.
       - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: allure-report
 
       # Публикует Allure-отчёт на GitHub Pages.
       - name: Deploy Allure report to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       # Сохраняет историю Allure в отдельную ветку allure-history.
       - name: Persist Allure history
