@@ -57,11 +57,22 @@ class ApiComment(ApiBase):
         return CommentsListResponseModel.model_validate(body)
 
     @allure.step("GET == /comment?page=*&limit=*")
-    def get_list_comments(self, page: int, limit: int) -> CommentsListResponseModel:
+    def get_list_comments(
+        self,
+        page: int,
+        limit: int,
+        created_only: bool = False,
+    ) -> CommentsListResponseModel:
+        params = {"page": page, "limit": limit}
+        if created_only:
+            # Публичная база DummyAPI может содержать старые некорректные записи.
+            # created=1 оставляет только данные текущего app-id.
+            params["created"] = 1
+
         response = self.send_request(
             method="GET",
             url=self.endpoint.get_list_comments(),
-            params={"page": page, "limit": limit},
+            params=params,
         )
         body = self._check_status_code(response, ok_statuses=[200])
         return CommentsListResponseModel.model_validate(body)

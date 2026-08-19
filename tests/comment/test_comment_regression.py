@@ -81,6 +81,7 @@ class TestCommentRegression(BaseTest):
         response = self.api_comment.get_list_comments(
             page=page,
             limit=limit,
+            created_only=True,
         )
         assert response is not None
         assert response.page == page

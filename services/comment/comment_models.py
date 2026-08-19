@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -7,15 +6,15 @@ class Owner(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
-    firstName: str = Field(min_length=2, max_length=50)
-    lastName: str = Field(min_length=2, max_length=50)
+    firstName: str = Field(default="", max_length=50)
+    lastName: str = Field(default="", max_length=50)
 
 
 class CommentResponseModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
-    message: str = Field(min_length=2, max_length=500)
+    message: str = Field(default="", max_length=500)  # Убрано min_length=2
     owner: Owner
     post: str
     publishDate: datetime

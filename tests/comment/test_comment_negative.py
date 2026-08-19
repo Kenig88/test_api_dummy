@@ -51,6 +51,7 @@ class TestCommentNegative(BaseTest):
         response = self.api_comment.get_list_comments(
             page=page,
             limit=limit,
+            created_only=True,
         )
         assert response.page == expected_page
         assert response.limit == expected_limit
