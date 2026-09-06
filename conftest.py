@@ -122,7 +122,7 @@ def api_user(http_session: requests.Session, user_endpoints: UserEndpoints) -> A
     return ApiUser(http_session=http_session, endpoints=user_endpoints, timeout=DEFAULT_TIMEOUT)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def created_user(api_user: ApiUser):
     created_user_ids: list[str] = []
 
@@ -154,7 +154,7 @@ def api_post(http_session: requests.Session, post_endpoints: PostEndpoints) -> A
     return ApiPost(http_session=http_session, endpoints=post_endpoints, timeout=DEFAULT_TIMEOUT)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def created_post(api_post: ApiPost, created_user):
     created_post_ids: list[str] = []
 
@@ -189,7 +189,7 @@ def api_comment(http_session: requests.Session, comment_endpoints: CommentEndpoi
     return ApiComment(http_session=http_session, endpoints=comment_endpoints, timeout=DEFAULT_TIMEOUT)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def created_comment(api_comment: ApiComment, created_user, created_post):
     created_comment_ids: list[str] = []
 
