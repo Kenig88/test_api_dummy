@@ -13,7 +13,7 @@ from services.comment.comment_endpoints import CommentEndpoints
 from services.comment.comment_payload import CommentPayload
 from services.post.api_post import ApiPost
 from services.post.post_endpoints import PostEndpoints
-from services.post.post_payload import PostPayload
+from services.post.post_payloads import PostPayloads
 from services.user.api_user import ApiUser
 from services.user.user_endpoints import UserEndpoints
 from services.user.user_payloads import UserPayloads
@@ -162,7 +162,7 @@ def created_post(api_post: ApiPost, created_user):
         if user_id is None:
             user_id = str(created_user().id)
 
-        payload = PostPayload.create_post_payload(user_id)
+        payload = PostPayloads.create_post_payload(user_id)
         if overrides:
             payload.update(overrides)
 

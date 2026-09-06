@@ -5,11 +5,11 @@ from services.api_base import ApiBase
 from services.error_models import ErrorResponseModel
 from services.post.post_endpoints import PostEndpoints
 from services.post.post_models import (
-    PostDeleteResponseModel,
+    PostDeleteResultModel,
     PostListResponseModel,
     PostResponseModel,
 )
-from services.post.post_payload import PostPayload
+from services.post.post_payloads import PostPayloads
 
 
 class ApiPost(ApiBase):
@@ -20,7 +20,7 @@ class ApiPost(ApiBase):
     @allure.step("POST == /post/create")
     def create_post(self, user_id: str, payload: dict | None = None) -> PostResponseModel:
         if payload is None:
-            payload = PostPayload.create_post_payload(user_id)
+            payload = PostPayloads.create_post_payload(user_id)
         else:
             payload = dict(payload)
             if payload.get("owner") != user_id:
@@ -74,7 +74,7 @@ class ApiPost(ApiBase):
     @allure.step("PUT == /post/{post_id}")
     def update_post(self, post_id: str, payload: dict | None = None) -> PostResponseModel:
         if payload is None:
-            payload = PostPayload.update_post_payload()
+            payload = PostPayloads.update_post_payload()
 
         response = self.send_request(
             method="PUT",
@@ -90,7 +90,7 @@ class ApiPost(ApiBase):
         post_id: str,
         expected_status_code: int = 200,
         allow_not_found: bool = False,
-    ) -> PostDeleteResponseModel | ErrorResponseModel | None:
+    ) -> PostDeleteResultModel | ErrorResponseModel | None:
         response = self.send_request(
             method="DELETE",
             url=self.endpoint.delete_post(post_id),
@@ -104,5 +104,5 @@ class ApiPost(ApiBase):
         if expected_status_code == 204:
             return None
         if expected_status_code == 200:
-            return PostDeleteResponseModel.model_validate(body)
+            return PostDeleteResultModel.model_validate(body)
         return ErrorResponseModel.model_validate(body)

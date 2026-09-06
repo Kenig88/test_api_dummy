@@ -4,7 +4,7 @@ import requests
 from services.api_base import ApiBase
 from services.comment.comment_endpoints import CommentEndpoints
 from services.comment.comment_models import (
-    CommentDeleteResponseModel,
+    CommentDeleteResultModel,
     CommentResponseModel,
     CommentsListResponseModel,
 )
@@ -83,7 +83,7 @@ class ApiComment(ApiBase):
         comment_id: str,
         expected_status_code: int = 200,
         allow_not_found: bool = False,
-    ) -> CommentDeleteResponseModel | ErrorResponseModel | None:
+    ) -> CommentDeleteResultModel | ErrorResponseModel | None:
         response = self.send_request(
             method="DELETE",
             url=self.endpoint.delete_comment(comment_id),
@@ -97,5 +97,5 @@ class ApiComment(ApiBase):
         if expected_status_code == 204:
             return None
         if expected_status_code == 200:
-            return CommentDeleteResponseModel.model_validate(body)
+            return CommentDeleteResultModel.model_validate(body)
         return ErrorResponseModel.model_validate(body)

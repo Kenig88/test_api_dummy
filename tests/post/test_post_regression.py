@@ -2,7 +2,7 @@ import allure
 import pytest
 
 from config.base_test import BaseTest
-from services.post.post_payload import PostPayload
+from services.post.post_payloads import PostPayloads
 
 
 @allure.epic("Administration")
@@ -13,7 +13,7 @@ class TestPostRegression(BaseTest):
     def test_create_post(self, created_user, created_post):
         user = created_user()
         user_id = str(user.id)
-        payload = PostPayload.create_post_payload(user_id)
+        payload = PostPayloads.create_post_payload(user_id)
         post = created_post(user_id=user_id, overrides=payload)
 
         assert post.id
@@ -83,7 +83,7 @@ class TestPostRegression(BaseTest):
     @allure.title("TestPostRegression --> test_update_post()")
     def test_update_post(self, created_post):
         post = created_post()
-        update_payload = PostPayload.update_post_payload()
+        update_payload = PostPayloads.update_post_payload()
         updated_post = self.api_post.update_post(post.id, update_payload)
 
         assert updated_post.text == update_payload["text"]

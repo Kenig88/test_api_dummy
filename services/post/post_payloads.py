@@ -3,7 +3,7 @@ from faker import Faker
 fake = Faker()
 
 
-class PostPayload:
+class PostPayloads:
 
     @staticmethod
     def create_post_payload(user_id: str) -> dict:

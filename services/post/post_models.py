@@ -43,7 +43,7 @@ class PostListResponseModel(BaseModel):
     limit: int = Field(strict=True, ge=5, le=50)
 
 
-class PostDeleteResponseModel(BaseModel):
+class PostDeleteResultModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str

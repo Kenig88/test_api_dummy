@@ -2,7 +2,7 @@ import allure
 import pytest
 
 from config.base_test import BaseTest
-from services.post.post_payload import PostPayload
+from services.post.post_payloads import PostPayloads
 
 
 @allure.epic("Administration")
@@ -34,7 +34,7 @@ class TestPostSmoke(BaseTest):
             assert got.owner.id == user_id
 
         with allure.step("test_post_smoke --> PUT == /post/{post_id}"):
-            update_payload = PostPayload.update_post_payload()
+            update_payload = PostPayloads.update_post_payload()
             updated_post = self.api_post.update_post(post_id, update_payload)
             assert updated_post.id == post_id
 

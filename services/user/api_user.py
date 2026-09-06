@@ -5,7 +5,7 @@ from services.api_base import ApiBase
 from services.error_models import ErrorResponseModel
 from services.user.user_endpoints import UserEndpoints
 from services.user.user_models import (
-    UserDeleteResponseModel,
+    UserDeleteResultModel,
     UserListResponseModel,
     UserResponseModel,
 )
@@ -76,7 +76,7 @@ class ApiUser(ApiBase):
         user_id: str,
         expected_status_code: int = 200,
         allow_not_found: bool = False,
-    ) -> UserDeleteResponseModel | ErrorResponseModel | None:
+    ) -> UserDeleteResultModel | ErrorResponseModel | None:
         response = self.send_request(
             method="DELETE",
             url=self.endpoint.delete_user(user_id),
@@ -90,5 +90,5 @@ class ApiUser(ApiBase):
         if expected_status_code == 204:
             return None
         if expected_status_code == 200:
-            return UserDeleteResponseModel.model_validate(body)
+            return UserDeleteResultModel.model_validate(body)
         return ErrorResponseModel.model_validate(body)

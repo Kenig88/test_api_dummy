@@ -2,7 +2,7 @@ import allure
 import pytest
 
 from config.base_test import BaseTest
-from services.post.post_payload import PostPayload
+from services.post.post_payloads import PostPayloads
 
 
 @allure.epic("Administration")
@@ -63,7 +63,7 @@ class TestPostNegative(BaseTest):
     @allure.title("TestPostNegative --> BODY_NOT_VALID (create missing owner)")
     def test_body_not_valid_create_missing_owner(self, created_user):
         user = created_user()
-        payload = PostPayload.create_post_payload(user_id=str(user.id))
+        payload = PostPayloads.create_post_payload(user_id=str(user.id))
         payload.pop("owner", None)
 
         response_post = self.api_post.send_request(

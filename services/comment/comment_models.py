@@ -29,7 +29,7 @@ class CommentsListResponseModel(BaseModel):
     limit: int = Field(strict=True, ge=5, le=50)
 
 
-class CommentDeleteResponseModel(BaseModel):
+class CommentDeleteResultModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
